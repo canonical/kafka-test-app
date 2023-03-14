@@ -115,8 +115,8 @@ async def test_producer_and_consumer_charms(ops_test: OpsTest, kafka_app_charm):
 async def test_producer_and_consumer_charms_with_actions(ops_test: OpsTest, kafka_app_charm):
     """Use the action to run producer and consumer."""
     topic_name = "topic_0"
-    consumer_config = {"role": "consumer", "num_messages": "10", "topic_name": topic_name}
-    producer_config = {"role": "producer", "num_messages": "10", "topic_name": topic_name}
+    consumer_config = {"role": "consumer", "num_messages": "30", "topic_name": topic_name}
+    producer_config = {"role": "producer", "num_messages": "30", "topic_name": topic_name}
 
     await ops_test.model.applications[PRODUCER].set_config(producer_config)
     await ops_test.model.wait_for_idle(apps=[PRODUCER])
@@ -197,9 +197,6 @@ async def test_producer_and_consumer_charms_with_actions(ops_test: OpsTest, kafk
 
     time.sleep(20)
 
-    # await check_logs(model_full_name=ops_test.model_full_name, unit_name=f"{PRODUCER}/0")
-    # await check_logs(model_full_name=ops_test.model_full_name, unit_name=f"{CONSUMER}/0")
-
     res_stop_producer = await fetch_action_stop_process(
         ops_test.model.applications[PRODUCER].units[0],
         "stop-process",
@@ -213,7 +210,7 @@ async def test_producer_and_consumer_charms_with_actions(ops_test: OpsTest, kafk
     await ops_test.model.remove_application(DATA_INTEGRATOR_CONSUMER)
     await ops_test.model.remove_application(DATA_INTEGRATOR_PRODUCER)
 
-    await ops_test.model.wait_for_idle(KAFKA)
+    await ops_test.model.wait_for_idle(apps=[KAFKA])
 
 
 @pytest.mark.abort_on_fail

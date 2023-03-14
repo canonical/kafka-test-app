@@ -5,8 +5,6 @@
 This document explains the processes and practices recommended for contributing enhancements to
 this operator.
 
-<!-- TEMPLATE-TODO: Update the URL for issue creation -->
-
 - Generally, before developing enhancements to this charm, you should consider [opening an issue
   ](https://github.com/canonical/operator-template/issues) explaining your use case.
 - If you would like to chat with us about your use-cases or proposed implementation, you can reach
@@ -33,7 +31,7 @@ source .tox/unit/bin/activate
 ### Testing
 
 ```shell
-tox -e fmt           # update your code according to linting rules
+tox -e format        # update your code according to linting rules
 tox -e lint          # code style
 tox -e unit          # unit tests
 tox -e integration   # integration tests
@@ -50,20 +48,15 @@ charmcraft pack
 
 ### Deploy
 
-<!-- TEMPLATE-TODO: Update the deploy command for name of charm-->
-
 ```bash
 # Create a model
 juju add-model dev
 # Enable DEBUG logging
 juju model-config logging-config="<root>=INFO;unit=DEBUG"
 # Deploy the charm
-juju deploy ./template-operator_ubuntu-20.04-amd64.charm \
-    --resource httpbin-image=kennethreitz/httpbin \
+juju deploy ./kafka-test-app_ubuntu-22.04-amd64.charm 
 ```
 
 ## Canonical Contributor Agreement
-
-<!-- TEMPLATE-TODO: Update the description with the name of charm-->
 
 Canonical welcomes contributions to the Charmed Template Operator. Please check out our [contributor agreement](https://ubuntu.com/legal/contributors) if you're interested in contributing to the solution.

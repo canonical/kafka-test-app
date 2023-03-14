@@ -1,9 +1,9 @@
-# Copyright 2022 Canonical Ltd.
+# Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 # For a complete list of supported options, see:
 # https://juju.is/docs/sdk/metadata-reference
-name: kafka-app
+name: kafka-test-app
 description: |
   Simple charm to simulate Kafka clients app
 summary: |
