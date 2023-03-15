@@ -230,10 +230,10 @@ async def test_deploy_mongodb_and_relate(ops_test: OpsTest, kafka_app_charm):
     await asyncio.gather(
         ops_test.model.deploy(
             MONGODB,
-            channel="dpe/edge",
+            channel="5/edge",
             application_name=MONGODB,
             num_units=1,
-            series="focal",
+            series="jammy",
         ),
     )
     await ops_test.model.wait_for_idle(apps=[MONGODB], timeout=1000, status="active")
@@ -324,22 +324,22 @@ async def test_tls(ops_test: OpsTest, kafka_app_charm):
     assert ops_test.model.applications[ZOOKEEPER].status == "active"
 
     logger.info("Relate Kafka to TLS")
-    await ops_test.model.add_relation(TLS_NAME, KAFKA)
-    await ops_test.model.wait_for_idle(apps=[TLS_NAME, KAFKA], idle_period=40)
+    await ops_test.model.add_relation(TLS_NAME, f"{KAFKA}:certificates")
+    await ops_test.model.wait_for_idle(apps=[TLS_NAME, KAFKA], status="active")
 
     assert ops_test.model.applications[TLS_NAME].status == "active"
     assert ops_test.model.applications[KAFKA].status == "active"
 
     logger.info("Relate Producer to TLS")
     await ops_test.model.add_relation(TLS_NAME, PRODUCER)
-    await ops_test.model.wait_for_idle(apps=[TLS_NAME, PRODUCER], idle_period=40)
+    await ops_test.model.wait_for_idle(apps=[TLS_NAME, PRODUCER], status="active")
 
     assert ops_test.model.applications[TLS_NAME].status == "active"
     assert ops_test.model.applications[PRODUCER].status == "active"
 
     logger.info("Relate Consumer to TLS")
     await ops_test.model.add_relation(TLS_NAME, CONSUMER)
-    await ops_test.model.wait_for_idle(apps=[TLS_NAME, CONSUMER], idle_period=40)
+    await ops_test.model.wait_for_idle(apps=[TLS_NAME, CONSUMER], status="active")
 
     assert ops_test.model.applications[TLS_NAME].status == "active"
     assert ops_test.model.applications[CONSUMER].status == "active"

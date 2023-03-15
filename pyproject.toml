@@ -29,7 +29,7 @@ description = "kafka-app"
 authors = [""]
 
 [tool.poetry.dependencies]
-python = ">=3.8"
+python = ">=3.10"
 ops = ">=2.1.0"
 kazoo = ">=2.8.0"
 tenacity = ">=8.0.1"
