@@ -147,7 +147,7 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
             self,
             relation_name=KAFKA_CLUSTER,
             topic=self.config.topic_name,
-            extra_user_roles=self.config.role,
+            extra_user_roles=str(self.config.role),
             consumer_group_prefix=self.config.consumer_group_prefix,
         )
         self.framework.observe(
@@ -260,14 +260,10 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
         servers: str,
         topic: str,
         consumer_group_prefix: Optional[str],
-        tls: str,
-        cafile_path: Optional[str] = None,
-        certfile_path: Optional[str] = None,
-        keyfile_path: Optional[str] = None,
     ) -> int:
         """Handle the start of the process for consumption or production of messagges."""
         t0 = int(time())
-        my_cmd = f"{self._build_cmd(process_type, username, password, servers, topic, consumer_group_prefix, tls, cafile_path, certfile_path, keyfile_path)}"
+        my_cmd = f"{self._build_cmd(process_type, username, password, servers, topic, consumer_group_prefix)}"
         logger.info(my_cmd)
         process = subprocess.Popen(
             shlex.split(my_cmd),
