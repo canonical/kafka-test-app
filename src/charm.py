@@ -147,7 +147,8 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
             self,
             relation_name=KAFKA_CLUSTER,
             topic=self.config.topic_name,
-            extra_user_roles=self.config.app_type.value,
+            extra_user_roles=self.config.role,
+            consumer_group_prefix=self.config.consumer_group_prefix,
         )
         self.framework.observe(
             self.kafka_cluster.on.bootstrap_server_changed, self._on_kafka_bootstrap_server_changed
@@ -221,8 +222,7 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
         if self.peer_relation.unit_data.pid:
             event.fail(f"Process id {self.peer_relation.unit_data.pid} already running!")
 
-        app_type = self.config.app_type
-        logger.info(f"app: {app_type} : {type(app_type)}")
+        app_type = self.config.role
         username = event.params["username"]
         password = event.params["password"]
         servers = event.params["servers"]
@@ -238,7 +238,6 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
             servers=servers,
             topic=topic,
             consumer_group_prefix=consumer_group_prefix,
-            tls="disabled",
         )
         event.set_results({"process": pid})
 
@@ -293,13 +292,9 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
         servers: str,
         topic: str,
         consumer_group_prefix: Optional[str],
-        tls: str,
-        cafile_path: Optional[str] = None,
-        certfile_path: Optional[str] = None,
-        keyfile_path: Optional[str] = None,
-    ):
+    ) -> str:
         """Handle the creation of the command to launch producer or consumer."""
-        if tls == "enabled" and self.peer_relation.app_data.private_key:
+        if self.kafka_relation_data.tls == "enabled" and self.peer_relation.app_data.private_key:
             logger.info(f"TLS enabled -> bootstrap servers: {servers}")
             servers = servers.replace("9092", "9093")
 
@@ -314,11 +309,8 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
         if self.peer_relation.app_data.database_name and self.database_relation_data.uris:
             cmd += f" --mongo-uri '{self.database_relation_data.uris}' "
 
-        if tls == "enabled" and self.peer_relation.app_data.private_key:
-            assert cafile_path
-            assert certfile_path
-            assert keyfile_path
-            cmd = f"{cmd} --cafile-path {cafile_path} --certfile-path {certfile_path} --keyfile-path {keyfile_path} --security-protocol SASL_SSL "
+        if self.kafka_relation_data.tls == "enabled" and self.peer_relation.app_data.private_key:
+            cmd = f"{cmd} --cafile-path {CA_FILE_PATH} --certfile-path {CERT_FILE_PATH} --keyfile-path {KEY_FILE_PATH} --security-protocol SASL_SSL "
 
         if process_type == AppType.CONSUMER:
             return f"{cmd} --consumer --consumer-group-prefix {consumer_group_prefix}"
@@ -371,8 +363,7 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
         if self.peer_relation.app_data.topic_name:
             if self.peer_relation.app_data.topic_name == self.config.topic_name:
                 return ActiveStatus(
-                    f"Topic {self.config.topic_name} enabled "
-                    f"with process {self.config.app_type.value}"
+                    f"Topic {self.config.topic_name} enabled " f"with process {self.config.role}"
                 )
             else:
                 return BlockedStatus(
@@ -384,7 +375,7 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
                 "Please relate with Kafka or use the action to run the application without the relation."
             )
 
-    def _on_database_created(self, event: DatabaseCreatedEvent):
+    def _on_database_created(self, event: DatabaseCreatedEvent) -> None:
         """Handle the database created event."""
         logger.info(
             f"Database successfully created: {self.config.topic_name} with username: {event.username}"
@@ -396,17 +387,17 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
         if not self.peer_relation.app_data.topic_name:
             event.defer()
 
-    def _on_database_relation_broken(self, _: RelationBrokenEvent):
+    def _on_database_relation_broken(self, _: RelationBrokenEvent) -> None:
         """Handle database relation broken event."""
         if self.unit.is_leader():
             self.peer_relation.set_database("")
 
-    def _on_kafka_bootstrap_server_changed(self, event: BootstrapServerChangedEvent):
+    def _on_kafka_bootstrap_server_changed(self, event: BootstrapServerChangedEvent) -> None:
         """Handle the bootstrap server changed."""
         # Event triggered when a bootstrap server was changed for this application
         logger.info(f"Bootstrap servers changed into: {event.bootstrap_server}")
 
-    def _on_kafka_topic_created(self, event: TopicCreatedEvent):
+    def _on_kafka_topic_created(self, event: TopicCreatedEvent) -> None:
         """Handle the topic created event."""
         # Event triggered when a topic was created for this application
         logger.info(
@@ -419,7 +410,7 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
         if not self.peer_relation.app_data.topic_name:
             event.defer()
 
-        app_type = self.config.app_type
+        app_type = self.config.role
 
         username = self.kafka_relation_data.username
         password = self.kafka_relation_data.password
@@ -428,7 +419,7 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
         consumer_group_prefix = (
             self.kafka_relation_data.consumer_group_prefix or self.config.consumer_group_prefix
         )
-        logger.info(f"app: {app_type} : {type(app_type)}")
+        logger.info(f"starting app_type: {app_type}")
         pid = self._start_process(
             process_type=app_type,
             username=username,
@@ -436,16 +427,12 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
             servers=servers,
             topic=topic,
             consumer_group_prefix=consumer_group_prefix,
-            tls=self.kafka_relation_data.tls,
-            cafile_path=CA_FILE_PATH,
-            certfile_path=CERT_FILE_PATH,
-            keyfile_path=KEY_FILE_PATH,
         )
         logger.info(f"Auto-Started {app_type} process with pid: {pid}")
 
         self.unit.status = self.get_status()
 
-    def _on_relation_broken(self, _: RelationBrokenEvent):
+    def _on_relation_broken(self, _: RelationBrokenEvent) -> None:
         """Handle the relation broken event."""
         pid = self.peer_relation.unit_data.pid
         assert pid
@@ -455,12 +442,12 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
             self.peer_relation.set_topic("")
         self.unit.status = self.get_status()
 
-    def _on_config_changed(self, _):
+    def _on_config_changed(self, _) -> None:
         """Handle the on configuration changed hook."""
-        logger.info(f"Configuration changed to {','.join(self.config.app_type)}")
+        logger.info(f"Configuration changed to {','.join(self.config.role)}")
         self.unit.status = self.get_status()
 
-    def _on_install(self, _):
+    def _on_install(self, _) -> None:
         """Handle install hook."""
         self.unit.status = self.get_status()
 

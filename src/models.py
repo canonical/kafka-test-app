@@ -9,7 +9,15 @@ from charms.data_platform_libs.v0.data_models import RelationDataModel
 from pydantic import BaseModel, ValidationError, validator
 
 
-class AppType(str, Enum):
+class BaseEnumStr(str, Enum):
+    """Base class for string enum."""
+
+    def __str__(self) -> str:
+        """Return the value as a string."""
+        return str(self.value)
+
+
+class AppType(BaseEnumStr):
     """Class for the app type."""
 
     PRODUCER = "producer"
@@ -20,26 +28,11 @@ class CharmConfig(BaseModel):
     """Charmed configuration class."""
 
     topic_name: str
-    role: str
+    role: AppType
     replication_factor: int
     consumer_group_prefix: Optional[str] = None
     partitions: int
     num_messages: int
-
-    @classmethod
-    @validator("role")
-    def _role_parser(cls, value: str):
-        """Handle the parsing of the role."""
-        try:
-            _app_type = AppType(value)
-        except Exception as e:
-            raise ValidationError(f"could not properly parsed the roles configuration: {e}")
-        return AppType(value)
-
-    @property
-    def app_type(self) -> AppType:
-        """Return the Kafka app type (producer or consumer)."""
-        return AppType(self.role)
 
 
 class StartConsumerParam(BaseModel):
@@ -86,12 +79,12 @@ class KafkaProviderRelationDataBag(AuthDataBag):
     consumer_group_prefix: Optional[str]
 
     @property
-    def security_protocol(self):
+    def security_protocol(self) -> str:
         """Return the security protocol."""
         return "SASL_PLAINTEXT" if self.tls is not None else "SASL_SSL"
 
     @property
-    def bootstrap_server(self):
+    def bootstrap_server(self) -> str:
         """Return the bootstrap servers endpoints."""
         return self.endpoints
 

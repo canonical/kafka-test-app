@@ -33,8 +33,8 @@ class TestCharm(unittest.TestCase):
     def test_config_parsing_ok(self):
         self.assertIsInstance(self.harness.charm.config, CharmConfig)
 
-        self.assertIsInstance(self.harness.charm.config.app_type, str)
-        self.assertEqual(self.harness.charm.config.app_type, "consumer")
+        self.assertIsInstance(self.harness.charm.config.role, str)
+        self.assertEqual(self.harness.charm.config.role, "consumer")
 
     def test_peer_data_bag(self):
         _ = self.harness.add_relation(PEER, "kafka-app")
