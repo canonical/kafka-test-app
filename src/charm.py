@@ -205,7 +205,7 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
         if not self.peer_relation.app_data:
             event.defer()
             return
-
+        assert self.peer_relation.app_data.private_key
         self.write_file(content=self.peer_relation.app_data.private_key, path=KEY_FILE_PATH)
         self.write_file(content=event.certificate, path=CERT_FILE_PATH)
         self.write_file(content=event.ca, path=CA_FILE_PATH)
@@ -290,10 +290,6 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
         consumer_group_prefix: Optional[str],
     ) -> str:
         """Handle the creation of the command to launch producer or consumer."""
-        if self.kafka_relation_data.tls == "enabled" and self.peer_relation.app_data.private_key:
-            logger.info(f"TLS enabled -> bootstrap servers: {servers}")
-            servers = servers.replace("9092", "9093")
-
         cmd = (
             "nohup python3 -m charms.kafka.v0.client "
             + f"--username {username} "
@@ -305,7 +301,8 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
         if self.peer_relation.app_data.database_name and self.database_relation_data.uris:
             cmd += f" --mongo-uri '{self.database_relation_data.uris}' "
 
-        if self.kafka_relation_data.tls == "enabled" and self.peer_relation.app_data.private_key:
+        if self.peer_relation.app_data.private_key:
+            assert "9093" in servers
             cmd = f"{cmd} --cafile-path {CA_FILE_PATH} --certfile-path {CERT_FILE_PATH} --keyfile-path {KEY_FILE_PATH} --security-protocol SASL_SSL "
 
         if process_type == AppType.CONSUMER:
@@ -407,6 +404,8 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
             event.defer()
 
         app_type = self.config.role
+
+        assert self.kafka_relation_data
 
         username = self.kafka_relation_data.username
         password = self.kafka_relation_data.password
