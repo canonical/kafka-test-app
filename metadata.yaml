@@ -1,0 +1,26 @@
+# Copyright 2023 Canonical Ltd.
+# See LICENSE file for licensing details.
+
+# For a complete list of supported options, see:
+# https://juju.is/docs/sdk/metadata-reference
+name: kafka-test-app
+description: |
+  Simple charm to simulate Kafka clients app
+summary: |
+  This charms allow you to deploy a Kafka app to be integrated with an existing Kafka cluster
+
+series:
+  - jammy
+
+peers:
+  app-peers:
+    interface: app-peers
+
+requires:
+  kafka-cluster:
+    interface: kafka_client
+  database:
+    interface: mongodb_client
+  certificates:
+    interface: tls-certificates
+    limit: 1
