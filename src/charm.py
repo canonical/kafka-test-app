@@ -353,20 +353,19 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
 
     def get_status(self) -> StatusBase:
         """Return the status of the application."""
-        if self.peer_relation.app_data.topic_name:
-            if self.peer_relation.app_data.topic_name == self.config.topic_name:
-                return ActiveStatus(
-                    f"Topic {self.config.topic_name} enabled " f"with process {self.config.role}"
-                )
-            else:
-                return BlockedStatus(
-                    f"Please remove relation and recreate a new "
-                    f"one to track topic {self.config.topic_name}"
-                )
-        else:
+        if not self.peer_relation.app_data.topic_name:
             return ActiveStatus(
                 "Please relate with Kafka or use the action to run the application without the relation."
             )
+
+        if not self.peer_relation.app_data.topic_name == self.config.topic_name:
+            return BlockedStatus(
+                f"Please remove relation and recreate a new one to track topic {self.config.topic_name}"
+            )
+
+        return ActiveStatus(
+            f"Topic {self.config.topic_name} enabled with process {self.config.role}"
+        )
 
     def _on_database_created(self, event: DatabaseCreatedEvent) -> None:
         """Handle the database created event."""

@@ -83,7 +83,7 @@ import uuid
 from functools import cached_property
 from typing import Generator, List, Optional, Callable, TypeVar, Type
 
-from kafka import KafkaAdminClient, KafkaConsumer, KafkaProducer
+from kafka import KafkaAdminClient, KafkaConsumer, KafkaProducer, TopicPartition, OffsetAndMetadata
 from kafka.admin import NewTopic
 from kafka.errors import TopicAlreadyExistsError
 from pymongo import MongoClient
@@ -415,6 +415,10 @@ if __name__ == "__main__":
                     consumer_collection.insert_one(content)
                 except DuplicateKeyError:
                     logger.error(f"Duplicated key with id: {content['_id']}")
+
+            partition = TopicPartition(message.topic, message.partition)
+            offset = OffsetAndMetadata(message.offset + 1, None)
+            client._consumer_client.commit({partition:offset})
 
     else:
         logger.info("No client type args found. Exiting...")
