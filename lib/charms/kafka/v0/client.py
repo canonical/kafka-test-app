@@ -391,13 +391,13 @@ if __name__ == "__main__":
                 "origin": origin,
                 "content": f"Message #{str(i)}"
             }
-            if producer_collection is not None:
-                producer_collection.insert_one(message)
-                logger.info(f"insert message in collection")
             client.produce_message(
                 topic_name=args.topic, message_content=json.dumps(message)
             )
-            time.sleep(2)
+            if producer_collection is not None:
+                producer_collection.insert_one(message)
+                logger.info(f"insert message in collection")
+            time.sleep(0.5)
 
     if args.consumer:
         logger.info("--consumer - Starting...")
