@@ -400,25 +400,27 @@ if __name__ == "__main__":
             time.sleep(0.5)
 
     if args.consumer:
-        logger.info("--consumer - Starting...")
-        client.subscribe_to_topic(
-            topic_name=args.topic, consumer_group_prefix=args.consumer_group_prefix
-        )
-        for message in client.messages():
-            logger.info(message)
-            content = json.loads(message.value.decode("utf-8"))
-            content["timestamp"] = datetime.datetime.now().timestamp()
-            content["destination"] = origin
-            content["consumer_group"] = args.consumer_group_prefix
-            if consumer_collection is not None:
-                try:
-                    consumer_collection.insert_one(content)
-                except DuplicateKeyError:
-                    logger.error(f"Duplicated key with id: {content['_id']}")
+        while True:
+            logger.info("--consumer - Starting...")
+            client.subscribe_to_topic(
+                topic_name=args.topic, consumer_group_prefix=args.consumer_group_prefix
+            )
+            for message in client.messages():
+                logger.info(message)
+                content = json.loads(message.value.decode("utf-8"))
+                content["timestamp"] = datetime.datetime.now().timestamp()
+                content["destination"] = origin
+                content["consumer_group"] = args.consumer_group_prefix
+                if consumer_collection is not None:
+                    try:
+                        consumer_collection.insert_one(content)
+                    except DuplicateKeyError:
+                        logger.error(f"Duplicated key with id: {content['_id']}")
 
-            partition = TopicPartition(message.topic, message.partition)
-            offset = OffsetAndMetadata(message.offset + 1, None)
-            client._consumer_client.commit({partition:offset})
+                partition = TopicPartition(message.topic, message.partition)
+                offset = OffsetAndMetadata(message.offset + 1, None)
+                client._consumer_client.commit({partition:offset})
+            time.sleep(2)
 
     else:
         logger.info("No client type args found. Exiting...")

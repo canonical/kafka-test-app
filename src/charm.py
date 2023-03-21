@@ -4,7 +4,6 @@
 
 """Charmed Kafka App for testing the Kafka Charmed Operator."""
 
-
 import logging
 import os
 import shlex
@@ -399,6 +398,9 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
             self.peer_relation.set_topic(self.config.topic_name)
 
         if not self.peer_relation.app_data.topic_name:
+            event.defer()
+
+        if self.kafka_relation_data.tls == "enabled" and not os.path.exists(CA_FILE_PATH):
             event.defer()
 
         app_type = self.config.role
