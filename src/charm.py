@@ -92,7 +92,7 @@ class PeerRelation:
         """Set private key in the peer relationd databag."""
         if relation_data := self.charm.model.get_relation(self.name):
             self.unit_data.copy(update={"private_key": private_key}).write(
-                relation_data.data[self.charm.app]
+                relation_data.data[self.charm.unit]
             )
         return private_key
 
@@ -177,7 +177,7 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
 
     def _tls_relation_joined(self, event: EventBase) -> None:
         """Handle the tls relation joined event."""
-        if not self.peer_relation.app_data:
+        if not self.peer_relation.unit_data:
             event.defer()
 
         self.peer_relation.set_private_key(generate_private_key().decode("utf-8"))
@@ -201,7 +201,7 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
 
     def _on_certificate_available(self, event: CertificateAvailableEvent) -> None:
         """Handle the on certificate available event."""
-        if not self.peer_relation.app_data:
+        if not self.peer_relation.unit_data:
             event.defer()
             return
         assert self.peer_relation.unit_data.private_key
@@ -437,7 +437,7 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
 
     def _on_config_changed(self, _) -> None:
         """Handle the on configuration changed hook."""
-        logger.info(f"Configuration changed to {','.join(self.config.role)}")
+        logger.info(f"Configuration changed to {str(self.config.role)}")
         self.unit.status = self.get_status()
 
     def _on_install(self, _) -> None:
