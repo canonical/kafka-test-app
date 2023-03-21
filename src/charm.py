@@ -180,6 +180,8 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
         if not self.peer_relation.app_data:
             event.defer()
             return
+        if not self.unit.is_leader():
+            return
 
         self.peer_relation.set_private_key(generate_private_key().decode("utf-8"))
         self._request_certificate()
@@ -187,6 +189,9 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
     def _request_certificate(self):
         """Request the certificate."""
         if not self.peer_relation.app_data:
+            return
+
+        if not self.unit.is_leader():
             return
 
         private_key = self.peer_relation.app_data.private_key
