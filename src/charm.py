@@ -4,7 +4,6 @@
 
 """Charmed Kafka App for testing the Kafka Charmed Operator."""
 
-
 import logging
 import os
 import shlex
@@ -179,6 +178,7 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
         """Handle the tls relation joined event."""
         if not self.peer_relation.unit_data:
             event.defer()
+            return
 
         self.peer_relation.set_private_key(generate_private_key().decode("utf-8"))
         self._request_certificate()
@@ -377,6 +377,7 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
 
         if not self.peer_relation.app_data.topic_name:
             event.defer()
+            return
 
     def _on_database_relation_broken(self, _: RelationBrokenEvent) -> None:
         """Handle database relation broken event."""
@@ -400,6 +401,11 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
 
         if not self.peer_relation.app_data.topic_name:
             event.defer()
+            return
+
+        if self.kafka_relation_data.tls == "enabled" and not os.path.exists(CA_FILE_PATH):
+            event.defer()
+            return
 
         app_type = self.config.role
 
