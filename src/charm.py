@@ -91,8 +91,8 @@ class PeerRelation:
     def set_private_key(self, private_key: str) -> str:
         """Set private key in the peer relationd databag."""
         if relation_data := self.charm.model.get_relation(self.name):
-            self.app_data.copy(update={"private_key": private_key}).write(
-                relation_data.data[self.charm.app]
+            self.unit_data.copy(update={"private_key": private_key}).write(
+                relation_data.data[self.charm.unit]
             )
         return private_key
 
@@ -177,19 +177,18 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
 
     def _tls_relation_joined(self, event: EventBase) -> None:
         """Handle the tls relation joined event."""
-        if not self.peer_relation.app_data:
+        if not self.peer_relation.unit_data:
             event.defer()
-            return
 
         self.peer_relation.set_private_key(generate_private_key().decode("utf-8"))
         self._request_certificate()
 
     def _request_certificate(self):
         """Request the certificate."""
-        if not self.peer_relation.app_data:
+        if not self.peer_relation.unit_data:
             return
 
-        private_key = self.peer_relation.app_data.private_key
+        private_key = self.peer_relation.unit_data.private_key
         if not private_key:
             return
 
@@ -202,11 +201,11 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
 
     def _on_certificate_available(self, event: CertificateAvailableEvent) -> None:
         """Handle the on certificate available event."""
-        if not self.peer_relation.app_data:
+        if not self.peer_relation.unit_data:
             event.defer()
             return
-        assert self.peer_relation.app_data.private_key
-        self.write_file(content=self.peer_relation.app_data.private_key, path=KEY_FILE_PATH)
+        assert self.peer_relation.unit_data.private_key
+        self.write_file(content=self.peer_relation.unit_data.private_key, path=KEY_FILE_PATH)
         self.write_file(content=event.certificate, path=CERT_FILE_PATH)
         self.write_file(content=event.ca, path=CA_FILE_PATH)
 
@@ -301,7 +300,7 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
         if self.peer_relation.app_data.database_name and self.database_relation_data.uris:
             cmd += f" --mongo-uri '{self.database_relation_data.uris}' "
 
-        if self.peer_relation.app_data.private_key:
+        if self.peer_relation.unit_data.private_key:
             assert "9093" in servers
             cmd = f"{cmd} --cafile-path {CA_FILE_PATH} --certfile-path {CERT_FILE_PATH} --keyfile-path {KEY_FILE_PATH} --security-protocol SASL_SSL "
 
@@ -438,7 +437,7 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
 
     def _on_config_changed(self, _) -> None:
         """Handle the on configuration changed hook."""
-        logger.info(f"Configuration changed to {','.join(self.config.role)}")
+        logger.info(f"Configuration changed to {str(self.config.role)}")
         self.unit.status = self.get_status()
 
     def _on_install(self, _) -> None:

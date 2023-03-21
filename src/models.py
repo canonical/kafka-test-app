@@ -103,10 +103,10 @@ class PeerRelationAppData(RelationDataModel):
 
     topic_name: Optional[str] = None
     database_name: Optional[str] = None
-    private_key: Optional[str] = None
 
 
 class PeerRelationUnitData(RelationDataModel):
     """Class to handle the unit peer relation databag."""
 
     pid: Optional[int]
+    private_key: Optional[str] = None
