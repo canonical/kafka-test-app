@@ -375,10 +375,6 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
         if self.unit.is_leader():
             self.peer_relation.set_database(self.config.topic_name)
 
-        if not self.peer_relation.app_data.topic_name:
-            event.defer()
-            return
-
     def _on_database_relation_broken(self, _: RelationBrokenEvent) -> None:
         """Handle database relation broken event."""
         if self.unit.is_leader():

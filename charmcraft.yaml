@@ -6,6 +6,7 @@ parts:
   charm:
     charm-binary-python-packages:
       - setuptools
+      - pymongo == 4.3.3
     build-packages:
       - libffi-dev
       - libssl-dev
