@@ -11,6 +11,9 @@ parts:
       - libssl-dev
       - rustc
       - cargo
+      - build-essential
+      - python3-dev
+      - pkg-config
 bases:
   - build-on:
       - name: "ubuntu"
