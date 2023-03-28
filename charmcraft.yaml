@@ -14,6 +14,7 @@ parts:
       - build-essential
       - python3-dev
       - pkg-config
+      - cmake
 bases:
   - build-on:
       - name: "ubuntu"
