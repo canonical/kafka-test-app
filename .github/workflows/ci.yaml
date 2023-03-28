@@ -50,12 +50,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Setup upterm session
-        uses: lhotari/action-upterm@v1
       - name: Setup operator environment
         uses: charmed-kubernetes/actions-operator@main
         with:
           provider: lxd
           bootstrap-options: "--agent-version 2.9.38"
+      - name: Setup upterm session
+        uses: lhotari/action-upterm@v1
       - name: Run integration tests
         run: tox -e integration
