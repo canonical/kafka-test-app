@@ -275,7 +275,7 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
     def _stop_process(self, pid: int):
         """Handle the stop of the producer/consumer process."""
         logger.info(f"Killing process with pid: {pid}")
-        subprocess.Popen(["sudo", "kill", "-9", str(pid)])
+        subprocess.Popen(["kill", "-9", str(pid)])
         self.peer_relation.remove_pid(pid)
         return pid
 
