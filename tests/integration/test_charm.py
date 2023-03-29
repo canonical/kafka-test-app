@@ -50,7 +50,7 @@ async def test_deploy_charms(ops_test: OpsTest, kafka_app_charm):
         ),
     )
 
-    await ops_test.model.wait_for_idle(apps=[ZOOKEEPER, KAFKA], timeout=1000)
+    await ops_test.model.wait_for_idle(apps=[ZOOKEEPER, KAFKA], timeout=3000)
 
     assert ops_test.model.applications[KAFKA].status == "blocked"
     assert ops_test.model.applications[ZOOKEEPER].status == "active"

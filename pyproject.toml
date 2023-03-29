@@ -37,8 +37,8 @@ pure-sasl = ">=0.6.2"
 jsonschema = ">=4.10"
 cryptography = "^38.0.4"
 pydantic =">=1.10"
-pymongo = "^4.3.3"
 kafka-python = ">=2.0"
+pymongo = "^4.3.3"
 
 [tool.poetry.group.fmt]
 optional = true

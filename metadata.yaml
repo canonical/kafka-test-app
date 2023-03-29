@@ -9,9 +9,6 @@ description: |
 summary: |
   This charms allow you to deploy a Kafka app to be integrated with an existing Kafka cluster
 
-series:
-  - jammy
-
 peers:
   app-peers:
     interface: app-peers

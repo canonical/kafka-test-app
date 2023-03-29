@@ -275,7 +275,7 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
     def _stop_process(self, pid: int):
         """Handle the stop of the producer/consumer process."""
         logger.info(f"Killing process with pid: {pid}")
-        subprocess.Popen(["sudo", "kill", "-9", str(pid)])
+        subprocess.Popen(["kill", "-9", str(pid)])
         self.peer_relation.remove_pid(pid)
         return pid
 
@@ -374,10 +374,6 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
 
         if self.unit.is_leader():
             self.peer_relation.set_database(self.config.topic_name)
-
-        if not self.peer_relation.app_data.topic_name:
-            event.defer()
-            return
 
     def _on_database_relation_broken(self, _: RelationBrokenEvent) -> None:
         """Handle database relation broken event."""
