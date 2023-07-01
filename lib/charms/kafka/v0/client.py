@@ -167,6 +167,8 @@ class KafkaClient:
             ssl_certfile=self.certfile_path if self.ssl else None,
             ssl_keyfile=self.keyfile_path if self.mtls else None,
             api_version=KafkaClient.API_VERSION if self.mtls else None,
+            retries=5,
+            retry_backoff_ms=1000
         )
 
     @cached_property
