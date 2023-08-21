@@ -19,9 +19,9 @@ options:
     type: string
   partitions:
     default: 5
-    descriptions: Number of partitions for the topic when created
+    description: Number of partitions for the topic when created
     type: int
   num_messages:
     default: 1000
-    descriptions: Number of messages.
+    description: Number of messages.
     type: int
