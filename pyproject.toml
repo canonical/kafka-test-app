@@ -29,16 +29,17 @@ description = "kafka-app"
 authors = [""]
 
 [tool.poetry.dependencies]
-python = ">=3.10"
-ops = ">=2.1.0"
+python = ">=3.8"
+ops = ">=2.4.1"
 kazoo = ">=2.8.0"
 tenacity = ">=8.0.1"
 pure-sasl = ">=0.6.2"
 jsonschema = ">=4.10"
-cryptography = "^38.0.4"
-pydantic =">=1.10"
-kafka-python = ">=2.0"
+cryptography = "^38.0.0"
+pydantic ="^1.10.7"
 pymongo = "^4.3.3"
+kafka-python = ">=2.0"
+pyyaml = "^6.0.1"
 
 [tool.poetry.group.fmt]
 optional = true
@@ -67,7 +68,7 @@ optional = true
 
 [tool.poetry.group.integration.dependencies]
 pytest = ">=7.2"
-juju = "==2.9.11"
+juju = "^2.9.44"
 coverage = {extras = ["toml"], version = ">7.0"}
 pytest-operator = ">0.20"
 kazoo = ">=2.8"
