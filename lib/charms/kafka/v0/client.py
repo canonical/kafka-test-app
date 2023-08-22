@@ -90,7 +90,11 @@ from pymongo import MongoClient
 from pymongo.errors import DuplicateKeyError
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+logging.basicConfig(
+    stream=sys.stdout,
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s [%(name)s] (%(threadName)s) (%(funcName)s) %(message)s"
+)
 
 # The unique Charmhub library identifier, never change it
 LIBID = "67b2f3f3cefa49e9b225346049625251"
