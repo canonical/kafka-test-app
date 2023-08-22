@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Library to provide simple API for promoting typed, validated and structured dataclass in charms.
+r"""Library to provide simple API for promoting typed, validated and structured dataclass in charms.
 
 Dict-like data structure are often used in charms. They are used for config, action parameters
 and databag. This library aims at providing simple API for using pydantic BaseModel-derived class
@@ -39,9 +39,9 @@ also parsing and validation on standard dataclass implementation:
 
 ```python
 
-from pydantic import BaseModel
+from charms.data_platform_libs.v0.data_models import BaseConfigModel
 
-class MyConfig(BaseModel):
+class MyConfig(BaseConfigModel):
 
     my_key: int
 
@@ -59,6 +59,7 @@ created:
 dataclass = MyConfig(my_key="1")
 
 dataclass.my_key # this returns 1 (int)
+dataclass["my_key"] # this returns 1 (int)
 
 dataclass = MyConfig(my_key="102") # this returns a ValueError("Too High")
 ```
@@ -167,12 +168,22 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 1
+LIBPATCH = 3
+
+PYDEPS = ["ops>=2.0.0", "pydantic>=1.10,<2"]
 
 G = TypeVar("G")
 T = TypeVar("T", bound=BaseModel)
 AppModel = TypeVar("AppModel", bound=BaseModel)
 UnitModel = TypeVar("UnitModel", bound=BaseModel)
+
+
+class BaseConfigModel(BaseModel):
+    """Class to be used for defining the structured configuration options."""
+
+    def __getitem__(self, x):
+        """Return the item using the notation instance[key]."""
+        return getattr(self, x.replace("-", "_"))
 
 
 class TypedCharmBase(CharmBase, Generic[T]):
@@ -237,10 +248,10 @@ def read(relation_data: MutableMapping[str, str], obj: Type[T]) -> T:
         **{
             field_name: (
                 relation_data[parsed_key]
-                if field.outer_type_ in [int, str, float]
+                if field.annotation in [int, str, float]
                 else json.loads(relation_data[parsed_key])
             )
-            for field_name, field in obj.__fields__.items()
+            for field_name, field in obj.__fields__.items()  # pyright: ignore[reportGeneralTypeIssues]
             if (parsed_key := field_name.replace("_", "-")) in relation_data
             if relation_data[parsed_key]
         }
@@ -264,19 +275,18 @@ def parse_relation_data(
             [
                 CharmBase,
                 RelationEvent,
-                Union[AppModel, ValidationError],
-                Union[UnitModel, ValidationError],
+                Optional[Union[AppModel, ValidationError]],
+                Optional[Union[UnitModel, ValidationError]],
             ],
             G,
         ]
     ) -> Callable[[CharmBase, RelationEvent], G]:
         @wraps(f)
         def event_wrapper(self: CharmBase, event: RelationEvent):
-
             try:
                 app_data = (
                     read(event.relation.data[event.app], app_model)
-                    if app_model is not None
+                    if app_model is not None and event.app
                     else None
                 )
             except pydantic.ValidationError as e:
@@ -285,7 +295,7 @@ def parse_relation_data(
             try:
                 unit_data = (
                     read(event.relation.data[event.unit], unit_model)
-                    if unit_model is not None
+                    if unit_model is not None and event.unit
                     else None
                 )
             except pydantic.ValidationError as e:
