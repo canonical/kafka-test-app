@@ -13,10 +13,10 @@ start-process:
     password:
       type: string
       description: "The password for the authentication with Kafka."
-    topic_name:
+    topic-name:
       type: string
       description: "The desired topic."
-    consumer_group_prefix:
+    consumer-group-prefix:
       type: string
       description: "The desired consumer group prefix"
   required: [servers, username, password, topic_name]
