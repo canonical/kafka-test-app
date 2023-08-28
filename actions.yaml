@@ -19,7 +19,7 @@ start-process:
     consumer-group-prefix:
       type: string
       description: "The desired consumer group prefix"
-  required: [servers, username, password, topic_name]
+  required: [servers, username, password, topic-name]
     
 stop-process:
   description: Stop the producer or consumer process.
