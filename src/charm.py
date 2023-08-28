@@ -227,7 +227,7 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
         servers = event.params["servers"]
         topic = event.params["topic-name"]
         consumer_group_prefix = None
-        if "consumer_group_prefix" in event.params:
+        if "consumer-group-prefix" in event.params:
             consumer_group_prefix = event.params["consumer-group-prefix"]
 
         pid = self._start_process(
