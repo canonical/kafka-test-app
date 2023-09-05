@@ -85,10 +85,10 @@ async def fetch_action_start_process(
         "servers": servers,
         "username": username,
         "password": password,
-        "topic_name": topic_name,
+        "topic-name": topic_name,
     }
     if consumer_group_prefix:
-        parameters["consumer_group_prefix"] = consumer_group_prefix
+        parameters["consumer-group-prefix"] = consumer_group_prefix
     action = await unit.run_action(action_name=action_name, **parameters)
     result = await action.wait()
     return result.results
