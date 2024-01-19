@@ -35,7 +35,8 @@ from literals import (
     CA_FILE_PATH,
     CERT_FILE_PATH,
     CERTIFICATES,
-    DATABASE,
+    MONGODB,
+    POSTGRESQL,
     KAFKA_CLUSTER,
     KEY_FILE_PATH,
     PEER,
@@ -45,6 +46,7 @@ from models import (
     CharmConfig,
     KafkaProviderRelationDataBag,
     MongoProviderRelationDataBag,
+    PostgreSQLProviderRelationDataBag,
     PeerRelationAppData,
     PeerRelationUnitData,
 )
@@ -79,13 +81,26 @@ class PeerRelation:
             )
         return topic_name
 
-    def set_database(self, database_name: str) -> str:
+    def set_mongodb(self, database_name: str) -> str:
         """Set database name in the peer relation databag."""
         if relation_data := self.charm.model.get_relation(self.name):
-            self.app_data.copy(update={"database_name": database_name}).write(
+            self.app_data.copy(
+                update={"mongodb_database": database_name}
+            ).write(
                 relation_data.data[self.charm.app]
             )
         return database_name
+
+    def set_postgresql(self, database_name: str) -> str:
+        """Set database name in the peer relation databag."""
+        if relation_data := self.charm.model.get_relation(self.name):
+            self.app_data.copy(
+                update={"postgresql_database": database_name}
+            ).write(
+                relation_data.data[self.charm.app]
+            )
+        return database_name
+
 
     def set_private_key(self, private_key: str) -> str:
         """Set private key in the peer relationd databag."""
@@ -155,12 +170,26 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
         self.framework.observe(self.kafka_cluster.on.topic_created, self._on_kafka_topic_created)
         self.framework.observe(self.on[KAFKA_CLUSTER].relation_broken, self._on_relation_broken)
 
-        self.database = DatabaseRequires(
-            self, relation_name=DATABASE, database_name=self.config.topic_name
+        self.mongodb = DatabaseRequires(
+            self, relation_name=MONGODB, database_name=self.config.topic_name
         )
-        self.framework.observe(self.database.on.database_created, self._on_database_created)
         self.framework.observe(
-            self.on[DATABASE].relation_broken, self._on_database_relation_broken
+            self.mongodb.on.database_created, self._on_mongodb_created
+        )
+        self.framework.observe(
+            self.on[MONGODB].relation_broken, self._on_mongodb_relation_broken
+        )
+
+        self.postgresql = DatabaseRequires(
+            self, relation_name=POSTGRESQL, database_name=self.config.topic_name
+        )
+        self.framework.observe(
+            self.postgresql.on.database_created,
+            self._on_postgresql_created
+        )
+        self.framework.observe(
+            self.on[POSTGRESQL].relation_broken,
+            self._on_postgresql_relation_broken
         )
 
         self.framework.observe(self.on[CERTIFICATES].relation_joined, self._tls_relation_joined)
@@ -297,8 +326,19 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
             + f"--topic {topic} "
         )
 
-        if self.peer_relation.app_data.database_name and self.database_relation_data.uris:
-            cmd += f" --mongo-uri '{self.database_relation_data.uris}' "
+        if self.peer_relation.app_data.mongodb_database \
+                and self.mongodb_relation_data.uris:
+            cmd += f" --mongo-uri '{self.mongodb_relation_data.uris}' "
+
+        if self.peer_relation.app_data.postgresql_database \
+                and self.postgresql_relation_data.password:
+
+            data = self.postgresql_relation_data
+
+            uri = (f"pgsql://{data.username}:{data.password}"
+                   f"@{data.endpoints}/{data.database}")
+
+            cmd += f" --pgsql-uri '{uri}' "
 
         if self.peer_relation.unit_data.private_key:
             assert "9093" in servers
@@ -334,21 +374,41 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
         return parsed if isinstance(parsed, KafkaProviderRelationDataBag) else None
 
     @property
-    def database_relation_data(self) -> Optional[MongoProviderRelationDataBag]:
+    def mongodb_relation_data(self) -> Optional[MongoProviderRelationDataBag]:
         """Return MongoDB relation data."""
         parsed = (
             get_relation_data_as(
                 MongoProviderRelationDataBag,
                 relation.data[relation.app],
             )
-            if (relation := self.model.get_relation(DATABASE))
+            if (relation := self.model.get_relation(MONGODB))
             else None
         )
 
         if isinstance(parsed, ValidationError):
-            logger.error(f"There was a problem to read {DATABASE} databag: {parsed}")
+            logger.error(f"There was a problem to read {MONGODB} databag: {parsed}")
 
         return parsed if isinstance(parsed, MongoProviderRelationDataBag) else None
+
+    @property
+    def postgresql_relation_data(self)\
+            -> Optional[PostgreSQLProviderRelationDataBag]:
+        """Return PostgreSQL relation data."""
+        parsed = (
+            get_relation_data_as(
+                PostgreSQLProviderRelationDataBag,
+                relation.data[relation.app],
+            )
+            if (relation := self.model.get_relation(POSTGRESQL))
+            else None
+        )
+
+        if isinstance(parsed, ValidationError):
+            logger.error(f"There was a problem to read {POSTGRESQL} databag: {parsed}")
+
+        return parsed \
+            if isinstance(parsed, PostgreSQLProviderRelationDataBag) else None
+
 
     def get_status(self) -> StatusBase:
         """Return the status of the application."""
@@ -366,19 +426,34 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
             f"Topic {self.config.topic_name} enabled with process {self.config.role}"
         )
 
-    def _on_database_created(self, event: DatabaseCreatedEvent) -> None:
+    def _on_mongodb_created(self, event: DatabaseCreatedEvent) -> None:
         """Handle the database created event."""
         logger.info(
             f"Database successfully created: {self.config.topic_name} with username: {event.username}"
         )
 
         if self.unit.is_leader():
-            self.peer_relation.set_database(self.config.topic_name)
+            self.peer_relation.set_mongodb(self.config.topic_name)
 
-    def _on_database_relation_broken(self, _: RelationBrokenEvent) -> None:
+    def _on_postgresql_created(self, event: DatabaseCreatedEvent) -> None:
+        """Handle the database created event."""
+        logger.info(
+            f"Database successfully created: {self.config.topic_name} with username: {event.username}"
+        )
+
+        if self.unit.is_leader():
+            self.peer_relation.set_postgresql(self.config.topic_name)
+
+
+    def _on_mongodb_relation_broken(self, _: RelationBrokenEvent) -> None:
         """Handle database relation broken event."""
         if self.unit.is_leader():
-            self.peer_relation.set_database("")
+            self.peer_relation.set_mongodb("")
+
+    def _on_postgresql_relation_broken(self, _: RelationBrokenEvent) -> None:
+        """Handle database relation broken event."""
+        if self.unit.is_leader():
+            self.peer_relation.set_postgresql("")
 
     def _on_kafka_bootstrap_server_changed(self, event: BootstrapServerChangedEvent) -> None:
         """Handle the bootstrap server changed."""

@@ -98,11 +98,20 @@ class MongoProviderRelationDataBag(AuthDataBag):
     version: Optional[str]
 
 
+class PostgreSQLProviderRelationDataBag(AuthDataBag):
+    """Class that handle the MongoDB relation databag."""
+
+    database: Optional[str]
+    read_only_endpoints: Optional[str]
+    version: Optional[str]
+
+
 class PeerRelationAppData(RelationDataModel):
     """Class to handle the peer relation databag."""
 
     topic_name: Optional[str] = None
-    database_name: Optional[str] = None
+    mongodb_database: Optional[str] = None
+    postgresql_database: Optional[str] = None
 
 
 class PeerRelationUnitData(RelationDataModel):

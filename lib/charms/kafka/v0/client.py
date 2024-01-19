@@ -79,6 +79,7 @@ import logging
 import socket
 import sys
 import time
+import typing
 import uuid
 from functools import cached_property
 from typing import Generator, List, Optional, Callable, TypeVar, Type
@@ -88,6 +89,8 @@ from kafka.admin import NewTopic
 from kafka.errors import TopicAlreadyExistsError
 from pymongo import MongoClient
 from pymongo.errors import DuplicateKeyError
+
+import psycopg2
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -278,6 +281,34 @@ def retrying(value_assigner: Callable[[], T], exception: Type[Exception], max_re
     return value
 
 
+def read_data(connection_string: str) -> typing.Iterator[tuple]:
+    with (
+        psycopg2.connect(connection_string) as connection,
+        connection.cursor() as cursor
+    ):
+        cursor.execute("""SELECT * FROM continuous_writes""")
+        for record in cursor.fetchall():
+            yield {
+                "timestamp": datetime.datetime.now().timestamp(),
+                "_id": uuid.uuid4().hex,
+                "origin": origin,
+                "content": f"{str(record)}"
+            }
+
+
+def generate_messages(
+        num_messages: int, messages_per_second: float = 2.0
+) -> typing.Iterator[tuple]:
+    for ith in range(num_messages):
+        yield {
+            "timestamp": datetime.datetime.now().timestamp(),
+            "_id": uuid.uuid4().hex,
+            "origin": origin,
+            "content": f"Message #{str(ith)}"
+        }
+        time.sleep(1.0/messages_per_second)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Handler for running a Kafka client")
     parser.add_argument(
@@ -342,6 +373,8 @@ if __name__ == "__main__":
     parser.add_argument("--certfile-path", type=str)
     parser.add_argument("--keyfile-path", type=str)
     parser.add_argument("--mongo-uri", type=str, required=False, default=None)
+    parser.add_argument("--pgsql-uri", type=str, required=False,
+                        default=None)
     parser.add_argument("--origin", type=str, required=False, default=None)
 
     args = parser.parse_args()
@@ -354,11 +387,31 @@ if __name__ == "__main__":
     if args.mongo_uri:
         mongo_client = MongoClient(args.mongo_uri)
 
-        producer_collection = mongo_client[args.topic].get_collection("producer")
         consumer_collection = mongo_client[args.topic].get_collection("consumer")
     else:
-        producer_collection = None
         consumer_collection = None
+
+    if args.pgsql_uri:
+        _value = str(args.pgsql_uri)
+
+        if not _value.startswith("pgsql://"):
+            raise SyntaxError("URI does not start with pgsql")
+
+        credentials, pointers, *_ = _value.replace("pgsql://", "")\
+            .split("@", maxsplit=1)
+
+        username, password, *_ = credentials.split(":", maxsplit=1)
+        endpoint, database, *_ = pointers.split("/", maxsplit=1)
+        host, port, *_ = endpoint.split(":", maxsplit=1)
+
+        connection_string = (
+            f"dbname='{database}' user='{username}'"
+            f" host='{host}' password='{password}' port={port} connect_timeout=5"
+        )
+
+        logger.info(f"connection_string: {connection_string}")
+    else:
+        connection_string = None
 
     client = retrying(
         lambda: KafkaClient(
@@ -390,20 +443,14 @@ if __name__ == "__main__":
 
         logger.info("--producer - Starting...")
 
-        for i in range(args.num_messages):
-            message = {
-                "timestamp": datetime.datetime.now().timestamp(),
-                "_id": uuid.uuid4().hex,
-                "origin": origin,
-                "content": f"Message #{str(i)}"
-            }
+        messages = read_data(connection_string) if connection_string \
+            else generate_messages(args.num_messages)
+
+        for message in messages:
             client.produce_message(
                 topic_name=args.topic, message_content=json.dumps(message)
             )
-            if producer_collection is not None:
-                producer_collection.insert_one(message)
-                logger.info(f"insert message in collection")
-            time.sleep(0.5)
+            logger.info(f"Produced message: {message}")
 
     if args.consumer:
         while True:

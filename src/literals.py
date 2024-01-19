@@ -6,7 +6,8 @@
 
 PEER = "app-peers"
 KAFKA_CLUSTER = "kafka-cluster"
-DATABASE = "database"
+MONGODB = "mongodb"
+POSTGRESQL = "postgresql"
 CERTIFICATES = "certificates"
 CA_FILE_PATH = "/tmp/ca.pem"
 CERT_FILE_PATH = "/tmp/server.pem"

@@ -16,8 +16,10 @@ peers:
 requires:
   kafka-cluster:
     interface: kafka_client
-  database:
+  mongodb:
     interface: mongodb_client
+  postgresql:
+    interface: postgresql_client
   certificates:
     interface: tls-certificates
     limit: 1
