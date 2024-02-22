@@ -174,7 +174,11 @@ class KafkaClient:
             ssl_keyfile=self.keyfile_path if self.mtls else None,
             api_version=KafkaClient.API_VERSION if self.mtls else None,
             retries=5,
-            retry_backoff_ms=1000
+            retry_backoff_ms=1000,
+            reconnect_backoff_ms=500,
+            request_timeout_ms=60000,
+            reconnect_backoff_max_ms=60000,
+            metadata_max_age_ms=30000,
         )
 
     @cached_property
@@ -194,7 +198,12 @@ class KafkaClient:
             group_id=self._consumer_group_prefix or None,
             enable_auto_commit=True,
             auto_offset_reset="earliest",
-            consumer_timeout_ms=15000,
+            retry_backoff_ms=1000,
+            reconnect_backoff_ms=500,
+            request_timeout_ms=60000,
+            reconnect_backoff_max_ms=60000,
+            metadata_max_age_ms=30000,
+            consumer_timeout_ms=60000,
         )
 
     def create_topic(self, topic: NewTopic) -> None:
@@ -245,6 +254,10 @@ class KafkaClient:
 
         yield from self._consumer_client
 
+    def _refresh_producer(self, _) -> None:
+        logger.error("All original broker IPs unreachable, re-establishing client...")
+        del self._producer_client
+
     def produce_message(self, topic_name: str, message_content: str) -> None:
         """Sends message to target topic on the cluster.
 
@@ -255,29 +268,21 @@ class KafkaClient:
             topic_name: the topic to send messages to
             message_content: the content of the message to send
         """
-        future = self._producer_client.send(topic_name, str.encode(message_content))
-        future.get(timeout=60)
-        logger.info(f"Message published to topic={topic_name}, message content: {message_content}")
+        for attempt in Retrying(
+            stop=stop_after_attempt(3), after=self._refresh_producer, reraise=True
+        ):
+            with attempt:
+                future = self._producer_client.send(topic_name, str.encode(message_content))
+                future.get(timeout=60)
+                logger.info(
+                    f"Message published to topic={topic_name}, message content: {message_content}"
+                )
 
 
 def get_origin() -> str:
+    """Gets hostname for current running machine."""
     hostname = socket.gethostname()
     return f"{hostname} ({socket.gethostbyname(hostname)})"
-
-
-def retrying(value_assigner: Callable[[], T], exception: Type[Exception], max_retries=10) -> T:
-    counter = 0
-    value = None
-    while not value:
-        try:
-            value = value_assigner()
-        except exception as e:
-            if counter == max_retries:
-                raise e
-            counter += 1
-            logger.error(f"Exception {e} raised. Retrying {counter} in 2 seconds...")
-            time.sleep(2)
-    return value
 
 
 if __name__ == "__main__":
@@ -362,18 +367,18 @@ if __name__ == "__main__":
         producer_collection = None
         consumer_collection = None
 
-    client = retrying(
-        lambda: KafkaClient(
-            servers=servers,
-            username=args.username,
-            password=args.password,
-            security_protocol=args.security_protocol,
-            cafile_path=args.cafile_path,
-            certfile_path=args.certfile_path,
-            keyfile_path=args.keyfile_path,
-        ),
-        Exception
-    )
+    client = None
+    for attempt in Retrying(stop=stop_after_attempt(10), wait=wait_fixed(2)):
+        with attempt:
+            client = KafkaClient(
+                servers=servers,
+                username=args.username,
+                password=args.password,
+                security_protocol=args.security_protocol,
+                cafile_path=args.cafile_path,
+                certfile_path=args.certfile_path,
+                keyfile_path=args.keyfile_path,
+            )
 
     if client and args.producer:
         logger.info(f"Creating new topic - {args.topic}")
@@ -383,10 +388,9 @@ if __name__ == "__main__":
             num_partitions=args.num_partitions,
             replication_factor=args.replication_factor,
         )
-        try:
-            retrying(lambda: client.create_topic(topic=topic), AssertionError)
-        except TopicAlreadyExistsError:
-            logger.info("Topic already exists")
+        for attempt in Retrying(stop=stop_after_attempt(10), wait=wait_fixed(2), reraise=True):
+            with attempt:
+                client.create_topic(topic=topic)
 
         time.sleep(2)
 
@@ -397,17 +401,15 @@ if __name__ == "__main__":
                 "timestamp": datetime.datetime.now().timestamp(),
                 "_id": uuid.uuid4().hex,
                 "origin": origin,
-                "content": f"Message #{str(i)}"
+                "content": f"Message #{str(i)}",
             }
-            client.produce_message(
-                topic_name=args.topic, message_content=json.dumps(message)
-            )
+            client.produce_message(topic_name=args.topic, message_content=json.dumps(message))
             if producer_collection is not None:
                 producer_collection.insert_one(message)
-                logger.info(f"insert message in collection")
+                logger.info("insert message in collection")
             time.sleep(0.5)
 
-    if args.consumer:
+    if client and args.consumer:
         while True:
             logger.info("--consumer - Starting...")
             client.subscribe_to_topic(
