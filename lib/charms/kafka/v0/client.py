@@ -81,19 +81,21 @@ import sys
 import time
 import uuid
 from functools import cached_property
-from typing import Generator, List, Optional, Callable, TypeVar, Type
+from typing import Generator, List, Optional, TypeVar
 
-from kafka import KafkaAdminClient, KafkaConsumer, KafkaProducer, TopicPartition, OffsetAndMetadata
+from kafka import KafkaAdminClient, KafkaConsumer, KafkaProducer, OffsetAndMetadata, TopicPartition
 from kafka.admin import NewTopic
-from kafka.errors import TopicAlreadyExistsError
 from pymongo import MongoClient
 from pymongo.errors import DuplicateKeyError
+from tenacity import Retrying
+from tenacity.stop import stop_after_attempt
+from tenacity.wait import wait_fixed
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
     stream=sys.stdout,
     level=logging.INFO,
-    format="%(asctime)s %(levelname)s [%(name)s] (%(threadName)s) (%(funcName)s) %(message)s"
+    format="%(asctime)s %(levelname)s [%(name)s] (%(threadName)s) (%(funcName)s) %(message)s",
 )
 
 # The unique Charmhub library identifier, never change it
@@ -115,15 +117,15 @@ class KafkaClient:
     API_VERSION = (2, 5, 0)
 
     def __init__(
-            self,
-            servers: List[str],
-            username: Optional[str],
-            password: Optional[str],
-            security_protocol: str,
-            cafile_path: Optional[str] = None,
-            certfile_path: Optional[str] = None,
-            keyfile_path: Optional[str] = None,
-            replication_factor: int = 3,
+        self,
+        servers: List[str],
+        username: Optional[str],
+        password: Optional[str],
+        security_protocol: str,
+        cafile_path: Optional[str] = None,
+        certfile_path: Optional[str] = None,
+        keyfile_path: Optional[str] = None,
+        replication_factor: int = 3,
     ) -> None:
         self.servers = servers
         self.username = username
@@ -208,7 +210,7 @@ class KafkaClient:
         self._admin_client.create_topics(new_topics=[topic], validate_only=False)
 
     def subscribe_to_topic(
-            self, topic_name: str, consumer_group_prefix: Optional[str] = None
+        self, topic_name: str, consumer_group_prefix: Optional[str] = None
     ) -> None:
         """Subscribes client to a specific topic, called when wishing to run a Consumer client.
 
@@ -425,7 +427,7 @@ if __name__ == "__main__":
 
                 partition = TopicPartition(message.topic, message.partition)
                 offset = OffsetAndMetadata(message.offset + 1, None)
-                client._consumer_client.commit({partition:offset})
+                client._consumer_client.commit({partition: offset})
             time.sleep(2)
 
     else:
