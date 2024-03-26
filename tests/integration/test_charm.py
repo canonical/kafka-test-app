@@ -39,7 +39,7 @@ async def test_deploy_charms(ops_test: OpsTest, kafka_app_charm):
             channel="edge",
             application_name=ZOOKEEPER,
             num_units=1,
-            series="jammy" if ops_test.cloud_name == "localhost" else "focal",
+            series="jammy",
         ),
         ops_test.model.deploy(
             KAFKA,
@@ -304,7 +304,7 @@ async def test_tls(ops_test: OpsTest, kafka_app_charm):
     tls_config = {"generate-self-signed-certificates": "true", "ca-common-name": "kafka"}
 
     await asyncio.gather(
-        ops_test.model.deploy(TLS_NAME, channel="beta", config=tls_config, series="jammy"),
+        ops_test.model.deploy(TLS_NAME, channel="stable", config=tls_config, series="jammy"),
     )
 
     await ops_test.model.wait_for_idle(
