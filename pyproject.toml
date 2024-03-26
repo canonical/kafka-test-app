@@ -27,10 +27,11 @@ name = "kafka-app"
 version = "1.0"
 description = "kafka-app"
 authors = []
+package-mode = false
 
 [tool.poetry.dependencies]
-python = ">=3.8"
-ops = ">=2.4.1"
+python = "^3.10"
+ops = ">=2.10.0"
 kazoo = ">=2.8.0"
 tenacity = ">=8.0.1"
 pure-sasl = ">=0.6.2"
@@ -68,7 +69,7 @@ optional = true
 
 [tool.poetry.group.integration.dependencies]
 pytest = ">=7.2"
-juju = "^2.9.44"
+juju = "^3.0.0"
 coverage = {extras = ["toml"], version = ">7.0"}
 pytest-operator = ">0.20"
 kazoo = ">=2.8"
