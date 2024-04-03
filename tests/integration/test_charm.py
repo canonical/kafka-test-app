@@ -20,7 +20,7 @@ ZOOKEEPER = "zookeeper"
 MONGODB = "mongodb"
 CONSUMER = "kafka-consumer"
 PRODUCER = "kafka-producer"
-TLS_NAME = "tls-certificates-operator"
+TLS_NAME = "self-signed-certificates"
 DATA_INTEGRATOR = "data-integrator"
 DATA_INTEGRATOR_PRODUCER = "data-integrator-producer"
 DATA_INTEGRATOR_CONSUMER = "data-integrator-consumer"
@@ -39,7 +39,7 @@ async def test_deploy_charms(ops_test: OpsTest, kafka_app_charm):
             channel="edge",
             application_name=ZOOKEEPER,
             num_units=1,
-            series="jammy" if ops_test.cloud_name == "localhost" else "focal",
+            series="jammy",
         ),
         ops_test.model.deploy(
             KAFKA,
@@ -301,10 +301,10 @@ async def test_deploy_mongodb_and_relate(ops_test: OpsTest, kafka_app_charm):
 
 @pytest.mark.abort_on_fail
 async def test_tls(ops_test: OpsTest, kafka_app_charm):
-    tls_config = {"generate-self-signed-certificates": "true", "ca-common-name": "kafka"}
+    tls_config = {"ca-common-name": "kafka"}
 
     await asyncio.gather(
-        ops_test.model.deploy(TLS_NAME, channel="beta", config=tls_config, series="jammy"),
+        ops_test.model.deploy(TLS_NAME, channel="edge", config=tls_config, series="jammy"),
     )
 
     await ops_test.model.wait_for_idle(
