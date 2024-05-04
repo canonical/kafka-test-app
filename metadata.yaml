@@ -1,13 +1,23 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-# For a complete list of supported options, see:
-# https://juju.is/docs/sdk/metadata-reference
 name: kafka-test-app
+display-name: Kafka Test App
+summary: Simple charm to simulate Kafka clients app
 description: |
-  Simple charm to simulate Kafka clients app
-summary: |
   This charms allow you to deploy a Kafka app to be integrated with an existing Kafka cluster
+
+docs: https://discourse.charmhub.io/t/14104
+source: https://github.com/canonical/kafka-test-app
+issues: https://github.com/canonical/kafka-test-app/issues
+website:
+  - https://ubuntu.com/data/kafka
+  - https://charmhub.io/kafka
+  - https://github.com/canonical/kafka-operator
+  - https://github.com/canonical/kafka-k8s-operator
+  - https://matrix.to/#/%23charmhub-data-platform%3Aubuntu.com
+maintainers:
+  - Canonical Data Platform <data-platform@lists.launchpad.net>
 
 peers:
   app-peers:
