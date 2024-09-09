@@ -36,14 +36,14 @@ async def test_deploy_charms(ops_test: OpsTest, kafka_app_charm):
     await asyncio.gather(
         ops_test.model.deploy(
             ZOOKEEPER,
-            channel="edge",
+            channel="3/edge",
             application_name=ZOOKEEPER,
             num_units=1,
             series="jammy",
         ),
         ops_test.model.deploy(
             KAFKA,
-            channel="edge",
+            channel="3/edge",
             application_name=KAFKA,
             num_units=1,
             series="jammy",
@@ -303,8 +303,11 @@ async def test_deploy_mongodb_and_relate(ops_test: OpsTest, kafka_app_charm):
 async def test_tls(ops_test: OpsTest, kafka_app_charm):
     tls_config = {"ca-common-name": "kafka"}
 
+    # FIXME (certs): Unpin the revision once the charm is fixed
     await asyncio.gather(
-        ops_test.model.deploy(TLS_NAME, channel="edge", config=tls_config, series="jammy"),
+        ops_test.model.deploy(
+            TLS_NAME, channel="edge", config=tls_config, series="jammy", revision=163
+        ),
     )
 
     await ops_test.model.wait_for_idle(
