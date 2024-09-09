@@ -11,7 +11,7 @@ on:
 jobs:
   lib-check:
     name: Check libraries
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 5
     steps:
       - name: Checkout
@@ -19,10 +19,9 @@ jobs:
         with:
           fetch-depth: 0
       - name: Check libs
-        uses: canonical/charming-actions/check-libraries@2.2.2
+        uses: canonical/charming-actions/check-libraries@2.2.3
         with:
-          # FIXME: CHARMHUB_TOKEN will expire in 2024-03-15
-          credentials: "${{ secrets.CHARMHUB_TOKEN }}"
+          credentials: "${{ secrets.CHARMHUB_TOKEN }}" # FIXME: current token will expire in 2023-07-04
           github-token: "${{ secrets.GITHUB_TOKEN }}"
 
   ci-tests:
@@ -30,24 +29,27 @@ jobs:
       - lib-check
     uses: ./.github/workflows/ci.yaml
 
-  release-to-charmhub:
-    name: Release to CharmHub
+  build:
+    name: Build charm
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm_without_cache.yaml@v7
+    with:
+      charmcraft-snap-channel: 3.x/stable
+
+  release:
+    name: Release to Charmhub
     needs:
       - lib-check
       - ci-tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-      - name: Select charmhub channel
-        uses: canonical/charming-actions/channel@2.2.2
-        id: channel
-      - name: Upload charm to charmhub
-        uses: canonical/charming-actions/upload-charm@2.2.2
-        with:
-          credentials: "${{ secrets.CHARMHUB_TOKEN }}"
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
-          channel: "${{ steps.channel.outputs.name }}"
+      - build
+    uses: canonical/data-platform-workflows/.github/workflows/release_charm.yaml@v7
+    with:
+      channel: latest/edge
+      artifact-name: ${{ needs.build.outputs.artifact-name }}
+      charmcraft-snap-channel: 3.x/stable
+    secrets:
+      charmhub-token: ${{ secrets.CHARMHUB_TOKEN }}
+    permissions:
+      contents: write # Needed to create GitHub release
+    steps: 
+      -
+

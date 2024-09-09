@@ -5,7 +5,8 @@ name: kafka-test-app
 display-name: Kafka Test App
 summary: Simple charm to simulate Kafka clients app
 description: |
-  This charms allow you to deploy a Kafka app to be integrated with an existing Kafka cluster
+  This charm allows you to deploy a Kafka app to be integrated with an existing Charmed Kafka cluster.
+  It works with both k8s and VM flavours.
 
 docs: https://discourse.charmhub.io/t/14104
 source: https://github.com/canonical/kafka-test-app

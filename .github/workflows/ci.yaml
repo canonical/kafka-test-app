@@ -16,7 +16,7 @@ on:
 jobs:
   lint:
     name: Lint
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 5
     steps:
       - name: Checkout
@@ -29,7 +29,7 @@ jobs:
 
   unit-test:
     name: Unit tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 5
     steps:
       - name: Checkout
@@ -40,13 +40,23 @@ jobs:
       - name: Run tests
         run: tox run -e unit
 
+
+  build:
+    name: Build charms
+    uses: canonical/data-platform-workflows/.github/workflows/build_charms_with_cache.yaml@v7
+    with:
+      charmcraft-snap-channel: 3.x/stable
+
   integration-charm:
     name: Integration tests for (lxd)
-    runs-on: ubuntu-latest
-    timeout-minutes: 200
+    strategy:
+      fail-fast: false
     needs:
       - lint
       - unit-test
+      - build
+    runs-on: ubuntu-latest
+    timeout-minutes: 200
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -55,5 +65,11 @@ jobs:
         with:
           juju-channel: 3.1/stable
           provider: lxd
+      - name: Download packed charm(s)
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{ needs.build.outputs.artifact-name }}
       - name: Run integration tests
         run: tox -e integration
+        env:
+          CI_PACKED_CHARMS: ${{ needs.build.outputs.charms }}
