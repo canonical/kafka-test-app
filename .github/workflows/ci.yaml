@@ -43,8 +43,6 @@ jobs:
   build:
     name: Build charms
     uses: canonical/data-platform-workflows/.github/workflows/build_charms_with_cache.yaml@v7
-    with:
-      charmcraft-snap-channel: 3.x/stable
 
   integration-charm:
     name: Integration tests for (lxd)
