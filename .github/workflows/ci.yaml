@@ -66,9 +66,12 @@ jobs:
           juju-channel: 3.1/stable
           provider: lxd
       - name: Download packed charm(s)
-        uses: actions/download-artifact@v3
+        id: download-charms
+        timeout-minutes: 5
+        uses: actions/download-artifact@v4
         with:
-          name: ${{ needs.build.outputs.artifact-name }}
+          pattern: ${{ needs.build.outputs.artifact-prefix }}-*
+          merge-multiple: true
       - name: Run integration tests
         run: tox -e integration
         env:
