@@ -1449,8 +1449,8 @@ pyyaml = "*"
 [package.source]
 type = "git"
 url = "https://github.com/canonical/data-platform-workflows"
-reference = "v20.0.2"
-resolved_reference = "37b15891a2ad9842721107fa4a42b6eb39ec830a"
+reference = "v2.0.1"
+resolved_reference = "1fdc48f8e0820f71581e7264f5a243f4d37d4ef6"
 subdirectory = "python/pytest_plugins/pytest_operator_cache"
 
 [[package]]
@@ -1997,4 +1997,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "dcbc4e4df9c2882b7090e3589e04e0ddcfd4e64abc184dabf9f65dc665f45eb6"
+content-hash = "a82ff36f995ab1dc29009a4bbf73f38489789f72c331e2dd42d3a978a1f58803"

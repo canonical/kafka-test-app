@@ -76,7 +76,7 @@ kazoo = ">=2.8"
 tenacity = ">=7.0"
 pure-sasl = ">=0.5"
 requests = ">2.25"
-pytest-operator-cache = { git = "https://github.com/canonical/data-platform-workflows", tag = "v20.0.2", subdirectory = "python/pytest_plugins/pytest_operator_cache" }
+pytest-operator-cache = { git = "https://github.com/canonical/data-platform-workflows", tag = "v2.0.1", subdirectory = "python/pytest_plugins/pytest_operator_cache" }
 
 [tool.ruff]
 line-length = 99
