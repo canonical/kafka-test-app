@@ -15,6 +15,16 @@ parts:
       - python3-dev
       - pkg-config
       - cmake
+    stage:
+      - dispatch
+      - lib
+      - LICENSE
+      - "*.yaml"
+      - README.md
+      - src
+      - venv
+      - assets
+
 bases:
   - build-on:
       - name: "ubuntu"
