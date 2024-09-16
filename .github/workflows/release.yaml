@@ -34,7 +34,7 @@ jobs:
     uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v21.0.1
     with:
       cache: false
-      charmcraft-snap-channel: 3.x/stable
+      charmcraft-snap-channel: 3.x/candidate
 
   release:
     name: Release to Charmhub
@@ -46,6 +46,7 @@ jobs:
     with:
       channel: latest/edge
       artifact-name: ${{ needs.build.outputs.artifact-name }}
+      charmcraft-snap-channel: 3.x/candidate
     secrets:
       charmhub-token: ${{ secrets.CHARMHUB_TOKEN }}
     permissions:

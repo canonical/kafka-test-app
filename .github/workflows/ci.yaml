@@ -45,7 +45,7 @@ jobs:
     uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v21.0.1
     with:
       cache: true
-      charmcraft-snap-channel: 3.x/stable
+      charmcraft-snap-channel: 3.x/candidate
 
   integration-charm:
     name: Integration tests for (lxd)
