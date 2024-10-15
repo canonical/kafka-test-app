@@ -15,7 +15,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Check libs
@@ -30,24 +30,23 @@ jobs:
       - lib-check
     uses: ./.github/workflows/ci.yaml
 
-  release-to-charmhub:
-    name: Release to CharmHub
+  build:
+    name: Build charm
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v22.0.0
+    with:
+      cache: false
+
+  release:
+    name: Release to Charmhub
     needs:
       - lib-check
       - ci-tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-      - name: Select charmhub channel
-        uses: canonical/charming-actions/channel@2.2.2
-        id: channel
-      - name: Upload charm to charmhub
-        uses: canonical/charming-actions/upload-charm@2.2.2
-        with:
-          credentials: "${{ secrets.CHARMHUB_TOKEN }}"
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
-          channel: "${{ steps.channel.outputs.name }}"
+      - build
+    uses: canonical/data-platform-workflows/.github/workflows/release_charm.yaml@v22.0.0
+    with:
+      channel: latest/edge
+      artifact-prefix: ${{ needs.build.outputs.artifact-prefix }}
+    secrets:
+      charmhub-token: ${{ secrets.CHARMHUB_TOKEN }}
+    permissions:
+      contents: write # Needed to create GitHub release
