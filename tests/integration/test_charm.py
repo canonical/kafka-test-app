@@ -36,14 +36,14 @@ async def test_deploy_charms(ops_test: OpsTest, kafka_app_charm):
     await asyncio.gather(
         ops_test.model.deploy(
             ZOOKEEPER,
-            channel="edge",
+            channel="stable",
             application_name=ZOOKEEPER,
             num_units=1,
             series="jammy",
         ),
         ops_test.model.deploy(
             KAFKA,
-            channel="edge",
+            channel="stable",
             application_name=KAFKA,
             num_units=1,
             series="jammy",
