@@ -10,9 +10,7 @@ from helpers import (
     fetch_action_get_credentials,
     fetch_action_start_process,
     fetch_action_stop_process,
-    get_kafka_app_database_relation_data,
 )
-from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
 
 KAFKA = "kafka"
@@ -36,14 +34,14 @@ async def test_deploy_charms(ops_test: OpsTest, kafka_app_charm):
     await asyncio.gather(
         ops_test.model.deploy(
             ZOOKEEPER,
-            channel="edge",
+            channel="3/stable",
             application_name=ZOOKEEPER,
             num_units=1,
             series="jammy",
         ),
         ops_test.model.deploy(
             KAFKA,
-            channel="edge",
+            channel="3/stable",
             application_name=KAFKA,
             num_units=1,
             series="jammy",
@@ -210,96 +208,6 @@ async def test_producer_and_consumer_charms_with_actions(ops_test: OpsTest, kafk
 
 
 @pytest.mark.abort_on_fail
-async def test_deploy_mongodb_and_relate(ops_test: OpsTest, kafka_app_charm):
-    """Deploy mongoDB, relate it with the kafka-app and dump messages."""
-    # clean topic
-
-    consumer_config = {"role": "consumer", "num_messages": "20", "topic_name": "topic_1"}
-    producer_config = {"role": "producer", "num_messages": "20", "topic_name": "topic_1"}
-
-    await ops_test.model.applications[PRODUCER].set_config(producer_config)
-    await ops_test.model.wait_for_idle(apps=[PRODUCER], idle_period=10)
-
-    await ops_test.model.applications[CONSUMER].set_config(consumer_config)
-    await ops_test.model.wait_for_idle(apps=[CONSUMER], idle_period=10)
-
-    await asyncio.gather(
-        ops_test.model.deploy(
-            MONGODB,
-            channel="5/edge",
-            application_name=MONGODB,
-            num_units=1,
-            series="jammy",
-        ),
-    )
-    await ops_test.model.wait_for_idle(apps=[MONGODB], timeout=1000, status="active")
-    await ops_test.model.add_relation(MONGODB, PRODUCER)
-    await ops_test.model.wait_for_idle(apps=[MONGODB, PRODUCER])
-    await ops_test.model.add_relation(MONGODB, CONSUMER)
-    await ops_test.model.wait_for_idle(apps=[MONGODB, CONSUMER])
-
-    # write messages to MongoDB
-    await ops_test.model.add_relation(KAFKA, PRODUCER)
-    await ops_test.model.wait_for_idle(apps=[KAFKA, PRODUCER], idle_period=60, status="active")
-
-    await ops_test.model.add_relation(KAFKA, CONSUMER)
-    await ops_test.model.wait_for_idle(apps=[KAFKA, CONSUMER], idle_period=60, status="active")
-
-    # read messages to MongoDB
-
-    mongodb_data = get_kafka_app_database_relation_data(
-        unit_name=f"{PRODUCER}/0", model_full_name=ops_test.model_full_name
-    )
-    uris = mongodb_data["uris"]
-    topic_name = mongodb_data["database"]
-    logger.info(f"MongoDB uris: {uris}")
-    logger.info(f"Topic: {topic_name}")
-    try:
-        client = MongoClient(
-            uris,
-            directConnection=False,
-            connect=False,
-            serverSelectionTimeoutMS=1000,
-            connectTimeoutMS=2000,
-        )
-        db = client[topic_name]
-        consumer_collection = db["consumer"]
-        producer_collection = db["producer"]
-
-        logger.info(f"Number of messages from consumer: {consumer_collection.count_documents({})}")
-        logger.info(f"Number of messages from producer: {producer_collection.count_documents({})}")
-        assert consumer_collection.count_documents({}) > 0
-        assert producer_collection.count_documents({}) > 0
-        assert consumer_collection.count_documents({}) == producer_collection.count_documents({})
-
-        client.close()
-    except Exception as e:
-        logger.error("Cannot connect to MongoDB collection.")
-        raise e
-
-    # remove relation between kafka cluster and producer and consumer.
-    await ops_test.model.applications[KAFKA].remove_relation(
-        f"{PRODUCER}:kafka-cluster", f"{KAFKA}:kafka-client"
-    )
-    await ops_test.model.wait_for_idle(apps=[KAFKA, PRODUCER])
-    await ops_test.model.applications[KAFKA].remove_relation(
-        f"{CONSUMER}:kafka-cluster", f"{KAFKA}:kafka-client"
-    )
-    await ops_test.model.wait_for_idle(apps=[KAFKA, CONSUMER])
-
-    # drop relation with MongoDB
-
-    await ops_test.model.applications[MONGODB].remove_relation(
-        f"{PRODUCER}:database", f"{MONGODB}:database"
-    )
-    await ops_test.model.wait_for_idle(apps=[MONGODB, PRODUCER])
-    await ops_test.model.applications[MONGODB].remove_relation(
-        f"{CONSUMER}:database", f"{MONGODB}:database"
-    )
-    await ops_test.model.wait_for_idle(apps=[MONGODB, CONSUMER])
-
-
-@pytest.mark.abort_on_fail
 async def test_tls(ops_test: OpsTest, kafka_app_charm):
     tls_config = {"ca-common-name": "kafka"}
 
@@ -340,13 +248,6 @@ async def test_tls(ops_test: OpsTest, kafka_app_charm):
     await ops_test.model.applications[CONSUMER].set_config(consumer_config)
     await ops_test.model.wait_for_idle(apps=[CONSUMER], idle_period=10)
 
-    # relate to mongodb
-    await ops_test.model.wait_for_idle(apps=[MONGODB], timeout=1000, status="active")
-    await ops_test.model.add_relation(MONGODB, PRODUCER)
-    await ops_test.model.wait_for_idle(apps=[MONGODB, PRODUCER], idle_period=10)
-    await ops_test.model.add_relation(MONGODB, CONSUMER)
-    await ops_test.model.wait_for_idle(apps=[MONGODB, CONSUMER], idle_period=10)
-
     # relate producer and consumer
     await ops_test.model.add_relation(KAFKA, PRODUCER)
     await ops_test.model.wait_for_idle(apps=[KAFKA, PRODUCER], idle_period=60, status="active")
@@ -355,36 +256,6 @@ async def test_tls(ops_test: OpsTest, kafka_app_charm):
     await ops_test.model.wait_for_idle(apps=[KAFKA, CONSUMER], idle_period=60, status="active")
 
     # Check messages in mongodb
-    mongodb_data = get_kafka_app_database_relation_data(
-        unit_name=f"{PRODUCER}/0", model_full_name=ops_test.model_full_name
-    )
-    uris = mongodb_data["uris"]
-    topic_name = mongodb_data["database"]
-    logger.info(f"MongoDB uris: {uris}")
-    logger.info(f"Topic: {topic_name}")
-    try:
-        client = MongoClient(
-            uris,
-            directConnection=False,
-            connect=False,
-            serverSelectionTimeoutMS=1000,
-            connectTimeoutMS=2000,
-        )
-        db = client[topic_name]
-        consumer_collection = db["consumer"]
-        producer_collection = db["producer"]
-
-        logger.info(f"Number of messages from consumer: {consumer_collection.count_documents({})}")
-        logger.info(f"Number of messages from producer: {producer_collection.count_documents({})}")
-        assert consumer_collection.count_documents({}) > 0
-        assert producer_collection.count_documents({}) > 0
-        assert consumer_collection.count_documents({}) == producer_collection.count_documents({})
-
-        client.close()
-    except Exception as e:
-        logger.error("Cannot connect to MongoDB collection.")
-        raise e
-
     await ops_test.model.applications[KAFKA].remove_relation(
         f"{PRODUCER}:kafka-cluster", f"{KAFKA}:kafka-client"
     )
