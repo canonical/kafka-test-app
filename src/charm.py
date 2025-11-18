@@ -15,6 +15,7 @@ from charms.data_platform_libs.v0.data_interfaces import (
     BootstrapServerChangedEvent,
     DatabaseCreatedEvent,
     DatabaseRequires,
+    KafkaRequirerData,
     KafkaRequires,
     TopicCreatedEvent,
 )
@@ -25,9 +26,9 @@ from charms.tls_certificates_interface.v1.tls_certificates import (
     generate_csr,
     generate_private_key,
 )
+from ops import main
 from ops.charm import ActionEvent, RelationBrokenEvent
 from ops.framework import EventBase
-from ops.main import main
 from ops.model import ActiveStatus, BlockedStatus, StatusBase
 from pydantic import ValidationError
 
@@ -174,6 +175,11 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
         )
         self.framework.observe(getattr(self.on, "stop_process_action"), self._stop_process_action)
 
+        self.framework.observe(self.on.update_status, self._on_update_status)
+
+    def _on_update_status(self, _) -> None:
+        logger.info("update status")
+
     def _tls_relation_joined(self, event: EventBase) -> None:
         """Handle the tls relation joined event."""
         if not self.peer_relation.unit_data:
@@ -221,7 +227,7 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
         if self.peer_relation.unit_data.pid:
             event.fail(f"Process id {self.peer_relation.unit_data.pid} already running!")
 
-        app_type = self.config.role
+        app_type = AppType(self.config.role)
         username = event.params["username"]
         password = event.params["password"]
         servers = event.params["servers"]
@@ -319,19 +325,17 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
     @property
     def kafka_relation_data(self) -> Optional[KafkaProviderRelationDataBag]:
         """Return kafka relation data."""
-        parsed = (
-            get_relation_data_as(
-                KafkaProviderRelationDataBag,
-                relation.data[relation.app],
-            )
-            if (relation := self.model.get_relation(KAFKA_CLUSTER))
-            else None
+        if not (relation := self.model.get_relation(KAFKA_CLUSTER)):
+            return None
+
+        data = KafkaRequirerData(
+            self.model,
+            KAFKA_CLUSTER,
+            self.peer_relation.app_data.topic_name,
+            extra_user_roles=str(self.config.role),
+            consumer_group_prefix=self.config.consumer_group_prefix,
         )
-
-        if isinstance(parsed, ValidationError):
-            logger.error(f"There was a problem to read {KAFKA_CLUSTER} databag: {parsed}")
-
-        return parsed if isinstance(parsed, KafkaProviderRelationDataBag) else None
+        return KafkaProviderRelationDataBag(relation, data)
 
     @property
     def database_relation_data(self) -> Optional[MongoProviderRelationDataBag]:
@@ -403,7 +407,7 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
             event.defer()
             return
 
-        app_type = self.config.role
+        app_type = AppType(self.config.role)
 
         assert self.kafka_relation_data
 
