@@ -175,11 +175,6 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
         )
         self.framework.observe(getattr(self.on, "stop_process_action"), self._stop_process_action)
 
-        self.framework.observe(self.on.update_status, self._on_update_status)
-
-    def _on_update_status(self, _) -> None:
-        logger.info("update status")
-
     def _tls_relation_joined(self, event: EventBase) -> None:
         """Handle the tls relation joined event."""
         if not self.peer_relation.unit_data:
