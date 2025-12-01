@@ -14,6 +14,8 @@ from helpers import (
 from pytest_operator.plugin import OpsTest
 
 KAFKA = "kafka"
+KAFKA_3_CHANNEL = "3/stable"
+KAFKA_4_CHANNEL = "4/edge"
 ZOOKEEPER = "zookeeper"
 MONGODB = "mongodb"
 CONSUMER = "kafka-consumer"
@@ -28,35 +30,48 @@ logger = logging.getLogger(__name__)
 
 
 @pytest.mark.abort_on_fail
-async def test_deploy_charms(ops_test: OpsTest, kafka_app_charm):
+async def test_deploy_charms(ops_test: OpsTest, kafka_version: int, kafka_app_charm):
     """Deploy both charms (application and database) to use in the tests."""
-    # deploy kafka and zookeeper
-    await asyncio.gather(
-        ops_test.model.deploy(
-            ZOOKEEPER,
-            channel="3/stable",
-            application_name=ZOOKEEPER,
-            num_units=1,
-            series="jammy",
-        ),
-        ops_test.model.deploy(
+    # deploy kafka
+    if kafka_version == 3:
+        await asyncio.gather(
+            ops_test.model.deploy(
+                ZOOKEEPER,
+                channel="3/stable",
+                application_name=ZOOKEEPER,
+                num_units=1,
+                series="jammy",
+            ),
+            ops_test.model.deploy(
+                KAFKA,
+                channel=KAFKA_3_CHANNEL,
+                application_name=KAFKA,
+                num_units=1,
+                series="jammy",
+            ),
+        )
+
+        await ops_test.model.wait_for_idle(apps=[ZOOKEEPER, KAFKA], timeout=3000)
+
+        assert ops_test.model.applications[KAFKA].status == "blocked"
+        assert ops_test.model.applications[ZOOKEEPER].status == "active"
+
+        await ops_test.model.add_relation(KAFKA, ZOOKEEPER)
+        await ops_test.model.wait_for_idle(
+            apps=[KAFKA, ZOOKEEPER], status="active", timeout=1000, idle_period=30
+        )
+    elif kafka_version == 4:
+        await ops_test.model.deploy(
             KAFKA,
-            channel="3/stable",
+            channel=KAFKA_4_CHANNEL,
             application_name=KAFKA,
             num_units=1,
-            series="jammy",
-        ),
-    )
+            config={"roles": "broker,controller"},
+        )
 
-    await ops_test.model.wait_for_idle(apps=[ZOOKEEPER, KAFKA], timeout=3000)
-
-    assert ops_test.model.applications[KAFKA].status == "blocked"
-    assert ops_test.model.applications[ZOOKEEPER].status == "active"
-
-    await ops_test.model.add_relation(KAFKA, ZOOKEEPER)
-    await ops_test.model.wait_for_idle(
-        apps=[KAFKA, ZOOKEEPER], status="active", timeout=1000, idle_period=30
-    )
+        await ops_test.model.wait_for_idle(
+            apps=[KAFKA], status="active", timeout=1200, idle_period=30
+        )
 
     # deploy one producer and one consumer
     # todo add configuration in place!
@@ -82,7 +97,9 @@ async def test_deploy_charms(ops_test: OpsTest, kafka_app_charm):
 
     await ops_test.model.wait_for_idle(apps=[CONSUMER, PRODUCER], timeout=1000, status="active")
     assert ops_test.model.applications[KAFKA].status == "active"
-    assert ops_test.model.applications[ZOOKEEPER].status == "active"
+
+    if kafka_version == 3:
+        assert ops_test.model.applications[ZOOKEEPER].status == "active"
 
 
 @pytest.mark.abort_on_fail
@@ -208,7 +225,7 @@ async def test_producer_and_consumer_charms_with_actions(ops_test: OpsTest, kafk
 
 
 @pytest.mark.abort_on_fail
-async def test_tls(ops_test: OpsTest, kafka_app_charm):
+async def test_tls(ops_test: OpsTest, kafka_version: int, kafka_app_charm):
     tls_config = {"ca-common-name": "kafka"}
 
     # FIXME (certs) Unpin revision once tls is fixed
@@ -218,14 +235,15 @@ async def test_tls(ops_test: OpsTest, kafka_app_charm):
         ),
     )
 
-    await ops_test.model.wait_for_idle(
-        apps=[KAFKA, ZOOKEEPER, TLS_NAME], timeout=1800, status="active"
-    )
+    await ops_test.model.wait_for_idle(apps=[KAFKA, TLS_NAME], timeout=1800, status="active")
     assert ops_test.model.applications[TLS_NAME].status == "active"
 
-    logger.info("Relate Zookeeper to TLS")
-    await ops_test.model.add_relation(TLS_NAME, ZOOKEEPER)
-    await ops_test.model.wait_for_idle(apps=[TLS_NAME, ZOOKEEPER], idle_period=40, status="active")
+    if kafka_version == 3:
+        logger.info("Relate Zookeeper to TLS")
+        await ops_test.model.add_relation(TLS_NAME, ZOOKEEPER)
+        await ops_test.model.wait_for_idle(
+            apps=[TLS_NAME, ZOOKEEPER], idle_period=40, status="active"
+        )
 
     logger.info("Relate Kafka to TLS")
     await ops_test.model.add_relation(TLS_NAME, f"{KAFKA}:certificates")

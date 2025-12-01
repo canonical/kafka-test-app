@@ -40,8 +40,14 @@ jobs:
         run: tox run -e unit
 
   integration-charm:
-    name: Integration tests for (lxd)
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        kafka-version:
+          - "3"
+          - "4"
+    name: Integration tests | Kafka ${{ matrix.kafka-version }}
+    runs-on: [self-hosted, linux, AMD64, X64, large, noble]
     timeout-minutes: 200
     needs:
       - lint
@@ -52,7 +58,7 @@ jobs:
       - name: Setup operator environment
         uses: charmed-kubernetes/actions-operator@main
         with:
-          juju-channel: 3.1/stable
+          juju-channel: 3.6/stable
           provider: lxd
       - name: Run integration tests
-        run: tox -e integration
+        run: tox -e integration -- --kafka ${{ matrix.kafka-version }}

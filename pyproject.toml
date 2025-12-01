@@ -47,6 +47,7 @@ jsonschema = ">=4.10"
 # kafka.v0.client.py
 kafka-python-ng = ">=2.0"
 pymongo = "^4.3.3"
+pyOpenSSL = "^25.3.0"
 
 [tool.poetry.group.fmt]
 optional = true
