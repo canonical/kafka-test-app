@@ -61,4 +61,9 @@ jobs:
           juju-channel: 3.6/stable
           provider: lxd
       - name: Run integration tests
-        run: tox -e integration -- --kafka ${{ matrix.kafka-version }}
+        run: |
+          # TODO: remove after LXD image issue is fixed
+          lxc image copy ubuntu:568f69ff1166 local:
+          sudo lxc image alias create "juju/ubuntu@22.04/amd64" 568f69ff116
+
+          tox -e integration -- --kafka ${{ matrix.kafka-version }}
