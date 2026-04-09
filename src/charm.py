@@ -243,14 +243,13 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
             topic = event.params.get("topic-name")
             consumer_group_prefix = event.params.get("consumer-group-prefix")
 
-        if not all([username, password, servers, topic]):
+        if not (username and password and servers and topic):
             event.fail(
                 "Missing required parameters: username, password, servers, topic-name."
                 " Provide them or relate with Kafka first."
             )
             return
 
-        assert username and password and servers and topic
         pid = self._start_process(
             process_type=app_type,
             username=username,
