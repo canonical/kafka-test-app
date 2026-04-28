@@ -221,15 +221,34 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
         """Handle the start process action."""
         if self.peer_relation.unit_data.pid:
             event.fail(f"Process id {self.peer_relation.unit_data.pid} already running!")
+            return
 
+        kafka = self.kafka_relation_data
         app_type = AppType(self.config.role)
-        username = event.params["username"]
-        password = event.params["password"]
-        servers = event.params["servers"]
-        topic = event.params["topic-name"]
-        consumer_group_prefix = None
-        if "consumer-group-prefix" in event.params:
-            consumer_group_prefix = event.params["consumer-group-prefix"]
+
+        # NOTE: If relation exists, use relation data, otherwise use action parameters. If both
+        # relation and parameters exists, params will take precedence and override relation data.
+        if kafka:
+            username = event.params.get("username") or kafka.username
+            password = event.params.get("password") or kafka.password
+            servers = event.params.get("servers") or kafka.bootstrap_server
+            topic = event.params.get("topic-name") or self.peer_relation.app_data.topic_name
+            consumer_group_prefix: Optional[str] = (
+                event.params.get("consumer-group-prefix") or kafka.consumer_group_prefix
+            )
+        else:
+            username = event.params.get("username")
+            password = event.params.get("password")
+            servers = event.params.get("servers")
+            topic = event.params.get("topic-name")
+            consumer_group_prefix = event.params.get("consumer-group-prefix")
+
+        if not (username and password and servers and topic):
+            event.fail(
+                "Missing required parameters: username, password, servers, topic-name."
+                " Provide them or relate with Kafka first."
+            )
+            return
 
         pid = self._start_process(
             process_type=app_type,
@@ -251,6 +270,7 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
         r_pid = self._stop_process(pid)
         assert r_pid == pid
         event.set_results({"process": pid})
+        self.unit.status = self.get_status()
 
     def _start_process(
         self,
