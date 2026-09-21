@@ -42,4 +42,4 @@ async def kafka_app_charm(ops_test: OpsTest):
     if not match:
         raise RuntimeError(f"Can not find appropriate charm file for {base=} {architecture=}")
 
-    return match[0]
+    return f"./{match[0]}"
