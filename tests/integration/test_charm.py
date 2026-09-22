@@ -83,14 +83,12 @@ async def test_deploy_charms(ops_test: OpsTest, kafka_version: int, kafka_app_ch
             kafka_app_charm,
             application_name=CONSUMER,
             num_units=1,
-            series="jammy",
             config=consumer_config,
         ),
         ops_test.model.deploy(
             kafka_app_charm,
             application_name=PRODUCER,
             num_units=1,
-            series="jammy",
             config=producer_config,
         ),
     )
