@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 
 @pytest.mark.abort_on_fail
-async def test_deploy_charms(ops_test: OpsTest, kafka_version: int, kafka_app_charm):
+async def test_deploy_charms(ops_test: OpsTest, kafka_version: int, kafka_app_charm, series):
     """Deploy both charms (application and database) to use in the tests."""
     # deploy kafka
     if kafka_version == 3:
@@ -83,15 +83,15 @@ async def test_deploy_charms(ops_test: OpsTest, kafka_version: int, kafka_app_ch
             kafka_app_charm,
             application_name=CONSUMER,
             num_units=1,
-            series="jammy",
             config=consumer_config,
+            series=series,
         ),
         ops_test.model.deploy(
             kafka_app_charm,
             application_name=PRODUCER,
             num_units=1,
-            series="jammy",
             config=producer_config,
+            series=series,
         ),
     )
 
@@ -103,7 +103,7 @@ async def test_deploy_charms(ops_test: OpsTest, kafka_version: int, kafka_app_ch
 
 
 @pytest.mark.abort_on_fail
-async def test_producer_and_consumer_charms(ops_test: OpsTest, kafka_app_charm):
+async def test_producer_and_consumer_charms(ops_test: OpsTest):
     """Add relation and start consumer and producers."""
     await ops_test.model.add_relation(KAFKA, PRODUCER)
     await ops_test.model.add_relation(KAFKA, CONSUMER)
@@ -122,7 +122,7 @@ async def test_producer_and_consumer_charms(ops_test: OpsTest, kafka_app_charm):
 
 
 @pytest.mark.abort_on_fail
-async def test_producer_and_consumer_charms_with_actions(ops_test: OpsTest, kafka_app_charm):
+async def test_producer_and_consumer_charms_with_actions(ops_test: OpsTest):
     """Use the action to run producer and consumer."""
     topic_name = "topic_0"
     consumer_config = {"role": "consumer", "num_messages": "30", "topic_name": topic_name}
@@ -225,7 +225,7 @@ async def test_producer_and_consumer_charms_with_actions(ops_test: OpsTest, kafk
 
 
 @pytest.mark.abort_on_fail
-async def test_tls(ops_test: OpsTest, kafka_version: int, kafka_app_charm):
+async def test_tls(ops_test: OpsTest, kafka_version: int):
     tls_config = {"ca-common-name": "kafka"}
 
     # FIXME (certs) Unpin revision once tls is fixed
