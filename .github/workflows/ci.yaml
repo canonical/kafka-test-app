@@ -56,6 +56,9 @@ jobs:
         kafka-version:
           - "3"
           - "4"
+        base:
+          - "ubuntu@22.04"
+          - "ubuntu@24.04"
     name: Integration tests | Kafka ${{ matrix.kafka-version }}
     runs-on: [self-hosted, linux, AMD64, X64, large, noble]
     timeout-minutes: 200
@@ -78,4 +81,4 @@ jobs:
           provider: lxd
       - name: Run integration tests
         run: |
-          tox -e integration -- --kafka ${{ matrix.kafka-version }}
+          tox -e integration -- --base ${{ matrix.base }} --kafka ${{ matrix.kafka-version }}
