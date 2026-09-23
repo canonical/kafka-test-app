@@ -45,9 +45,12 @@ jobs:
 
   build:
     name: Build charm
-    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v40.0.0
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v53
     with:
       cache: false
+    permissions:
+      contents: read
+    cache-mode: none
 
   integration-charm:
     strategy:
@@ -59,7 +62,7 @@ jobs:
         base:
           - "ubuntu@22.04"
           - "ubuntu@24.04"
-    name: Integration tests | Kafka ${{ matrix.kafka-version }}
+    name: Integration tests | Kafka ${{ matrix.kafka-version }} | ${{ matrix.base }}
     runs-on: [self-hosted, linux, AMD64, X64, large, noble]
     timeout-minutes: 200
     needs:
