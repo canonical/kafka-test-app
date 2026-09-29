@@ -15,7 +15,7 @@ on:
     outputs:
       artifact-prefix:
         description: build_charm.yaml `artifact-prefix` output
-        value: jobs.build.outputs.artifact-prefix
+        value: ${{ jobs.build.outputs.artifact-prefix }}
 
 jobs:
   lint:
