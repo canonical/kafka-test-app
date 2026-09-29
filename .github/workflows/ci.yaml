@@ -12,6 +12,10 @@ on:
     - cron: "53 0 * * *" # Daily at 00:53 UTC
   # Triggered on push to branch "main" by .github/workflows/release.yaml
   workflow_call:
+    outputs:
+      artifact-prefix:
+        description: build_charm.yaml `artifact-prefix` output
+        value: jobs.build.outputs.artifact-prefix
 
 jobs:
   lint:
@@ -20,7 +24,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Install tox
         run: pipx install tox
       - name: Run linters
@@ -32,12 +36,21 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Install tox
         # TODO: Consider replacing with custom image on self-hosted runner OR pinning version
         run: pipx install tox
       - name: Run tests
         run: tox run -e unit
+
+  build:
+    name: Build charm
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v53
+    with:
+      cache: false
+    permissions:
+      contents: read
+    cache-mode: none
 
   integration-charm:
     strategy:
@@ -46,15 +59,24 @@ jobs:
         kafka-version:
           - "3"
           - "4"
-    name: Integration tests | Kafka ${{ matrix.kafka-version }}
+        base:
+          - "ubuntu@22.04"
+          - "ubuntu@24.04"
+    name: Integration tests | Kafka ${{ matrix.kafka-version }} | ${{ matrix.base }}
     runs-on: [self-hosted, linux, AMD64, X64, large, noble]
     timeout-minutes: 200
     needs:
       - lint
       - unit-test
+      - build
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+      - name: Download packed charm(s)
+        uses: actions/download-artifact@v8
+        with:
+          pattern: ${{ needs.build.outputs.artifact-prefix }}-*
+          merge-multiple: true
       - name: Setup operator environment
         uses: charmed-kubernetes/actions-operator@main
         with:
@@ -62,4 +84,4 @@ jobs:
           provider: lxd
       - name: Run integration tests
         run: |
-          tox -e integration -- --kafka ${{ matrix.kafka-version }}
+          tox -e integration -- --base ${{ matrix.base }} --kafka ${{ matrix.kafka-version }}
