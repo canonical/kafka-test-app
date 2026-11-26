@@ -8,6 +8,7 @@ import logging
 import os
 import shlex
 import subprocess
+import sys
 from time import time
 from typing import Optional
 
@@ -310,8 +311,10 @@ class KafkaAppCharm(TypedCharmBase[CharmConfig]):
         consumer_group_prefix: Optional[str],
     ) -> str:
         """Handle the creation of the command to launch producer or consumer."""
+        # Use the interpreter running this hook (the charm's virtual environment), so the
+        # client can import its dependencies, such as kafka-python.
         cmd = (
-            "nohup python3 -m charms.kafka.v0.client "
+            f"nohup {sys.executable} -m charms.kafka.v0.client "
             + f"--username {username} "
             + f"--password {password} "
             + f"--servers {servers} "

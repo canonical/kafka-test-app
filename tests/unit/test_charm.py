@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
+import shlex
+import sys
 import unittest
 
 from ops.testing import Harness
 
 from charm import KafkaAppCharm
 from literals import PEER
-from models import CharmConfig
+from models import AppType, CharmConfig
 
 
 class TestCharm(unittest.TestCase):
@@ -47,3 +49,19 @@ class TestCharm(unittest.TestCase):
 
         self.harness.charm.peer_relation.set_topic("test-topic-1")
         self.assertEqual(self.harness.charm.peer_relation.app_data.topic_name, "test-topic-1")
+
+    def test_client_runs_with_charm_interpreter(self):
+        for process_type in (AppType.PRODUCER, AppType.CONSUMER):
+            cmd = self.harness.charm._build_cmd(
+                process_type=process_type,
+                username="user",
+                password="pass",
+                servers="10.0.0.1:9092",
+                topic="test-topic",
+                consumer_group_prefix="cg",
+            )
+
+            self.assertEqual(
+                shlex.split(cmd)[:4],
+                ["nohup", sys.executable, "-m", "charms.kafka.v0.client"],
+            )
