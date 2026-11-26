@@ -7,6 +7,7 @@ import time
 
 import pytest
 from helpers import (
+    check_logs,
     fetch_action_get_credentials,
     fetch_action_start_process,
     fetch_action_stop_process,
@@ -110,6 +111,9 @@ async def test_producer_and_consumer_charms(ops_test: OpsTest):
     await ops_test.model.wait_for_idle(
         apps=[KAFKA, CONSUMER, PRODUCER], idle_period=60, status="active"
     )
+
+    await check_logs(ops_test, f"{PRODUCER}/0", "producer", "Message published to topic")
+    await check_logs(ops_test, f"{CONSUMER}/0", "consumer", "--consumer - Starting...")
 
     await ops_test.model.applications[KAFKA].remove_relation(
         f"{PRODUCER}:kafka-cluster", f"{KAFKA}:kafka-client"
