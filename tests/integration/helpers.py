@@ -8,6 +8,7 @@ from typing import Any, Dict, Optional
 
 import yaml
 from juju.unit import Unit
+from pytest_operator.plugin import OpsTest
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
@@ -111,21 +112,22 @@ async def fetch_action_stop_process(
     return result.results
 
 
-async def check_logs(model_full_name: str, unit_name: str):
-    """Check logs for producer and consumer."""
-    files = check_output(
-        f"JUJU_MODEL={model_full_name} juju ssh {unit_name} 'find /tmp/' ",
-        stderr=PIPE,
-        shell=True,
-        universal_newlines=True,
-    ).splitlines()
+async def check_logs(ops_test: OpsTest, unit_name: str, process: str, expected: str) -> None:
+    """Assert that the client process on a unit logged the expected message.
 
-    logger.debug(f"{files=}")
+    The charm redirects the client's stdout and stderr to /tmp/<timestamp>_<process>.log
+    and /tmp/<timestamp>_<process>.err respectively.
 
-    passed = False
-    for file_name in files:
-        if ".log" in file_name and ("consumer" in file_name or "producer" in file_name):
-            passed = True
-            break
+    Args:
+        ops_test: the OpsTest fixture
+        unit_name: the unit running the client process
+        process: the client process type, either "producer" or "consumer"
+        expected: a message the client is expected to have logged
+    """
+    _, logs, _ = await ops_test.juju("exec", "--unit", unit_name, f"cat /tmp/*_{process}.log")
+    _, errors, _ = await ops_test.juju("exec", "--unit", unit_name, f"cat /tmp/*_{process}.err")
+    logger.debug(f"{unit_name} {process} logs:\n{logs}")
 
-    assert passed, "logs not found"
+    assert (
+        expected in logs
+    ), f"{expected!r} not found in {process} logs on {unit_name}, stderr:\n{errors}"
